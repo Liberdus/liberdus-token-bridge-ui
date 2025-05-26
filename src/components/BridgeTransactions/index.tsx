@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { wagmiConfig } from "@/app/wagmi";
+import { ethers } from "ethers";
+import { toEthereumAddress } from "@/utils/transformAddress";
 
 export interface Transaction {
   txId: string;
@@ -29,47 +31,54 @@ function BridgeTransactions() {
 
     try {
       // Replace this with your actual API endpoint
-      // const response = await fetch('/api/bridge-transactions');
-      // const data = await response.json();
+      const response = await fetch("http://localhost:8000/transaction");
+      const data = await response.json();
+      setTransactions(
+        data.Ok.transactions.map((tx: Transaction) =>
+          tx.type === "coinToToken"
+            ? { ...tx, type: "Bridge Out" }
+            : { ...tx, type: "Bridge In" }
+        )
+      );
 
       // Mock data for demonstration
-      const mockTransactions: Transaction[] = [
-        {
-          txId: "0x1234567890abcdef1234567890abcdef12345678",
-          sender: "0xabcdef1234567890abcdef1234567890abcdef12",
-          value: "1000000000000000000", // 1 ETH in wei
-          type: "Bridge In",
-          tssReceipt: "0x9876543210fedcba9876543210fedcba98765432",
-          originalTx: "0x1111222233334444555566667777888899990000",
-          status: "Completed",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          txId: "0x2345678901bcdef12345678901bcdef123456789",
-          sender: "0xbcdef12345678901bcdef12345678901bcdef123",
-          value: "500000000000000000", // 0.5 ETH in wei
-          type: "Bridge Out",
-          tssReceipt: "0x8765432109edcba98765432109edcba987654321",
-          originalTx: "0x2222333344445555666677778888999900001111",
-          status: "Pending",
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          updatedAt: new Date(Date.now() - 1800000).toISOString(),
-        },
-        {
-          txId: "0x3456789012cdef123456789012cdef1234567890",
-          sender: "0xcdef123456789012cdef123456789012cdef1234",
-          value: "2500000000000000000", // 2.5 ETH in wei
-          type: "Bridge In",
-          tssReceipt: "0x7654321098dcba987654321098dcba9876543210",
-          originalTx: "0x3333444455556666777788889999000011112222",
-          status: "Failed",
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          updatedAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-      ];
+      // const mockTransactions: Transaction[] = [
+      //   {
+      //     txId: "0x1234567890abcdef1234567890abcdef12345678",
+      //     sender: "0xabcdef1234567890abcdef1234567890abcdef12",
+      //     value: "1000000000000000000", // 1 ETH in wei
+      //     type: "Bridge In",
+      //     tssReceipt: "0x9876543210fedcba9876543210fedcba98765432",
+      //     originalTx: "0x1111222233334444555566667777888899990000",
+      //     status: "Completed",
+      //     createdAt: new Date().toISOString(),
+      //     updatedAt: new Date().toISOString(),
+      //   },
+      //   {
+      //     txId: "0x2345678901bcdef12345678901bcdef123456789",
+      //     sender: "0xbcdef12345678901bcdef12345678901bcdef123",
+      //     value: "500000000000000000", // 0.5 ETH in wei
+      //     type: "Bridge Out",
+      //     tssReceipt: "0x8765432109edcba98765432109edcba987654321",
+      //     originalTx: "0x2222333344445555666677778888999900001111",
+      //     status: "Pending",
+      //     createdAt: new Date(Date.now() - 3600000).toISOString(),
+      //     updatedAt: new Date(Date.now() - 1800000).toISOString(),
+      //   },
+      //   {
+      //     txId: "0x3456789012cdef123456789012cdef1234567890",
+      //     sender: "0xcdef123456789012cdef123456789012cdef1234",
+      //     value: "2500000000000000000", // 2.5 ETH in wei
+      //     type: "Bridge In",
+      //     tssReceipt: "0x7654321098dcba987654321098dcba9876543210",
+      //     originalTx: "0x3333444455556666777788889999000011112222",
+      //     status: "Failed",
+      //     createdAt: new Date(Date.now() - 7200000).toISOString(),
+      //     updatedAt: new Date(Date.now() - 3600000).toISOString(),
+      //   },
+      // ];
 
-      setTransactions(mockTransactions);
+      // setTransactions(mockTransactions);
     } catch (err) {
       setError("Failed to fetch bridge transactions");
       console.error("Error fetching transactions:", err);
@@ -87,15 +96,18 @@ function BridgeTransactions() {
   const formatValue = (value: string) => {
     // Convert wei to ETH for display
     try {
-      const ethValue = parseFloat(value) / Math.pow(10, 18);
-      return ethValue.toFixed(6) + " LIB";
+      const amount = BigInt(value);
+      const ethValue = ethers.formatEther(amount);
+      return ethValue + " LIB";
     } catch {
       return value;
     }
   };
 
   const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    if (!address) return "";
+    const ethAddress = toEthereumAddress(address);
+    return `${ethAddress.slice(0, 6)}...${ethAddress.slice(-4)}`;
   };
 
   const formatDate = (dateString?: string) => {
@@ -507,7 +519,11 @@ function BridgeTransactions() {
                           }}
                         >
                           <a
-                            href={`https://etherscan.io/tx/${tx.txId}`}
+                            href={
+                              tx.txId.startsWith("0x")
+                                ? `https://amoy.polygonscan.com/tx/${tx.txId}`
+                                : `https://dev.liberdus.com:3035/tx/${tx.txId}`
+                            }
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -621,28 +637,36 @@ function BridgeTransactions() {
                             borderRadius: "0 0.75rem 0.75rem 0",
                           }}
                         >
-                          <a
-                            href={`https://etherscan.io/tx/${tx.tssReceipt}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              color: "#a855f7",
-                              textDecoration: "none",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.5rem",
-                              transition: "color 0.2s",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.color = "#9333ea")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.color = "#a855f7")
-                            }
-                          >
-                            <span>{formatAddress(tx.tssReceipt)}</span>
-                            <span style={{ fontSize: "0.75rem" }}>↗</span>
-                          </a>
+                          {tx.tssReceipt == "" ? (
+                            "-"
+                          ) : (
+                            <a
+                              href={
+                                tx.tssReceipt?.startsWith("0x")
+                                  ? `https://amoy.polygonscan.com/tx/${tx.tssReceipt}`
+                                  : `https://dev.liberdus.com:3035/tx/${tx.tssReceipt}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: "#a855f7",
+                                textDecoration: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                                transition: "color 0.2s",
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.color = "#9333ea")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.color = "#a855f7")
+                              }
+                            >
+                              <span>{formatAddress(tx.tssReceipt)}</span>
+                              <span style={{ fontSize: "0.75rem" }}>↗</span>
+                            </a>
+                          )}
                         </td>
                       </tr>
                     ))}
