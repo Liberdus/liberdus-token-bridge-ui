@@ -15,9 +15,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Liberdus Smart Contract Ops",
+  title: "Liberdus Token Bridge",
   description:
-    "A service to interact with Liberdus Smart Contracts bridging and governance",
+    "Seamlessly migrate your LIB assets from the Token network to the Liberdus network and monitor all bridge transactions in real time.",
 };
 
 export default function RootLayout({
