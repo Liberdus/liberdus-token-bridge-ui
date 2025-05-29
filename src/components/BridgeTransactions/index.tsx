@@ -10,12 +10,24 @@ export interface Transaction {
   txId: string;
   sender: string;
   value: string;
-  type: string;
-  tssReceipt: string;
-  originalTx: string;
-  status: string;
+  type: TransactionType;
+  txTimestamp: number;
+  status: TransactionStatus;
+  receipt: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export enum TransactionStatus {
+  PENDING = 0,
+  PROCESSING = 1,
+  COMPLETED = 2,
+  FAILED = 3,
+}
+
+export enum TransactionType {
+  BRIDGE_IN = 0, // COIN to TOKEN
+  BRIDGE_OUT = 1, // TOKEN to COIN
 }
 
 function BridgeTransactions() {
@@ -65,14 +77,8 @@ function BridgeTransactions() {
       // Replace this with your actual API endpoint
       const response = await fetch(txURL);
       const data = await response.json();
-      setTransactions(
-        data.Ok.transactions.map((tx: Transaction) =>
-          tx.type === "coinToToken"
-            ? { ...tx, type: "Bridge In" }
-            : { ...tx, type: "Bridge Out" }
-        )
-      );
-      setTotalPages(1);
+      setTransactions(data.Ok.transactions);
+      setTotalPages(data.Ok.totalPages);
     } catch (err) {
       setError("Failed to fetch bridge transactions");
       console.error("Error fetching transactions:", err);
@@ -210,39 +216,39 @@ function BridgeTransactions() {
     return moment(localTime).fromNow();
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
+  const getStatusColor = (status: TransactionStatus) => {
+    switch (status) {
+      case TransactionStatus.COMPLETED:
         return "#22c55e";
-      case "pending":
+      case TransactionStatus.PENDING:
         return "#fb923c";
-      case "failed":
+      case TransactionStatus.FAILED:
         return "#ef4444";
       default:
         return "#9ca3af";
     }
   };
 
-  const getStatusBg = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
+  const getStatusBg = (status: TransactionStatus) => {
+    switch (status) {
+      case TransactionStatus.COMPLETED:
         return "rgba(34, 197, 94, 0.1)";
-      case "pending":
+      case TransactionStatus.PENDING:
         return "rgba(251, 146, 60, 0.1)";
-      case "failed":
+      case TransactionStatus.FAILED:
         return "rgba(239, 68, 68, 0.1)";
       default:
         return "rgba(156, 163, 175, 0.1)";
     }
   };
 
-  const getStatusBorder = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
+  const getStatusBorder = (status: TransactionStatus) => {
+    switch (status) {
+      case TransactionStatus.COMPLETED:
         return "1px solid rgba(34, 197, 94, 0.2)";
-      case "pending":
+      case TransactionStatus.PENDING:
         return "1px solid rgba(251, 146, 60, 0.2)";
-      case "failed":
+      case TransactionStatus.FAILED:
         return "1px solid rgba(239, 68, 68, 0.2)";
       default:
         return "1px solid rgba(156, 163, 175, 0.2)";
@@ -828,22 +834,32 @@ function BridgeTransactions() {
                               gap: "0.5rem",
                               padding: "0.25rem 0.75rem",
                               background:
-                                tx.type === "Bridge In"
+                                tx.type === TransactionType.BRIDGE_IN
                                   ? "rgba(34, 197, 94, 0.1)"
                                   : "rgba(59, 130, 246, 0.1)",
                               border:
-                                tx.type === "Bridge In"
+                                tx.type === TransactionType.BRIDGE_IN
                                   ? "1px solid rgba(34, 197, 94, 0.2)"
                                   : "1px solid rgba(59, 130, 246, 0.2)",
                               borderRadius: "0.5rem",
                               fontSize: "0.75rem",
                               fontWeight: "500",
                               color:
-                                tx.type === "Bridge In" ? "#22c55e" : "#3b82f6",
+                                tx.type === TransactionType.BRIDGE_IN
+                                  ? "#22c55e"
+                                  : "#3b82f6",
                             }}
                           >
-                            <span>{tx.type === "Bridge In" ? "←" : "→"}</span>
-                            <span>{tx.type}</span>
+                            <span>
+                              {tx.type === TransactionType.BRIDGE_IN
+                                ? "←"
+                                : "→"}
+                            </span>
+                            <span>
+                              {tx.type === TransactionType.BRIDGE_IN
+                                ? "Bridge In"
+                                : "Bridge Out"}
+                            </span>
                           </span>
                         </td>
                         <td style={{ padding: "1rem" }}>
@@ -869,7 +885,17 @@ function BridgeTransactions() {
                                 borderRadius: "50%",
                               }}
                             ></div>
-                            <span>{tx.status}</span>
+                            <span>
+                              {tx.status === TransactionStatus.COMPLETED
+                                ? "Completed"
+                                : tx.status === TransactionStatus.FAILED
+                                ? "Failed"
+                                : TransactionStatus.PENDING === tx.status
+                                ? "Pending"
+                                : TransactionStatus.PROCESSING === tx.status
+                                ? "Processing"
+                                : "Unknown"}
+                            </span>
                           </span>
                         </td>
                         <td
@@ -890,14 +916,14 @@ function BridgeTransactions() {
                             borderRadius: "0 0.75rem 0.75rem 0",
                           }}
                         >
-                          {tx.tssReceipt == "" ? (
+                          {tx.receipt == "" ? (
                             "-"
                           ) : (
                             <a
                               href={
-                                tx.tssReceipt?.startsWith("0x")
-                                  ? `https://amoy.polygonscan.com/tx/${tx.tssReceipt}`
-                                  : `https://dev.liberdus.com:3035/tx/${tx.tssReceipt}`
+                                tx.receipt?.startsWith("0x")
+                                  ? `https://amoy.polygonscan.com/tx/${tx.receipt}`
+                                  : `https://dev.liberdus.com:3035/tx/${tx.receipt}`
                               }
                               target="_blank"
                               rel="noopener noreferrer"
@@ -916,7 +942,7 @@ function BridgeTransactions() {
                                 (e.currentTarget.style.color = "#a855f7")
                               }
                             >
-                              <span>{formatAddress(tx.tssReceipt)}</span>
+                              <span>{formatAddress(tx.receipt)}</span>
                               <span style={{ fontSize: "0.75rem" }}>↗</span>
                             </a>
                           )}
