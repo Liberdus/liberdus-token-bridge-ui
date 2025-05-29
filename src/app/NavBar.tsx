@@ -138,7 +138,7 @@ export default function NavBar({ children }: { children: React.ReactNode }) {
               </div>
               <div
                 style={navItemStyle}
-                onClick={() => router.push("/txs")}
+                onClick={() => router.push("/bridgeTxns")}
                 onMouseEnter={(e) =>
                   Object.assign(e.currentTarget.style, navItemHoverStyle)
                 }
@@ -146,7 +146,7 @@ export default function NavBar({ children }: { children: React.ReactNode }) {
                   Object.assign(e.currentTarget.style, navItemStyle)
                 }
               >
-                Transactions Explorer
+                Bridge Txns
               </div>
             </div>
 

@@ -37,3 +37,4 @@ export const wagmiConfig = getDefaultConfig({
 
 export const contractAddress = "0x4EA46e5dD276eeB5D423465b4aFf646AC3f7bd74";
 export const coordinatorServer = "http://dev.liberdus.com:8000";
+export const bridgeInUsername = "liberdusbridge";

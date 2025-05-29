@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
-import { wagmiConfig, coordinatorServer } from "@/app/wagmi";
+import { useEffect, useState, useRef } from "react";
+import { coordinatorServer } from "@/app/wagmi";
 import { ethers } from "ethers";
 import { toEthereumAddress } from "@/utils/transformAddress";
 import moment from "moment";
@@ -20,19 +19,51 @@ export interface Transaction {
 }
 
 function BridgeTransactions() {
-  const { isConnected } = useAccount({ config: wagmiConfig });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("transaction");
+  const [searchError, setSearchError] = useState("");
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-  // Mock data for demonstration - replace with your actual API call
-  const fetchTransactions = async () => {
+  const fetchTransactions = async ({
+    page = 1,
+    txId,
+    sender,
+    type,
+    status,
+  }: {
+    page?: number;
+    txId?: string;
+    sender?: string;
+    type?: string;
+    status?: string;
+  } = {}) => {
     setLoading(true);
     setError(null);
+    setTransactions([]);
+
+    let txURL = `${coordinatorServer}/transaction`;
+    if (txId) {
+      txURL += `?txId=${txId}`;
+    } else if (sender) {
+      txURL += `?senderAddress=${sender}` + `&page=${page}`;
+    } else if (type) {
+      txURL += `?type=${type}` + `&page=${page}`;
+    } else if (status) {
+      txURL += `?status=${status}` + `&page=${page}`;
+    } else if (page) {
+      txURL += `?page=${page}`;
+    }
 
     try {
       // Replace this with your actual API endpoint
-      const response = await fetch(`${coordinatorServer}/transaction`);
+      const response = await fetch(txURL);
       const data = await response.json();
       setTransactions(
         data.Ok.transactions.map((tx: Transaction) =>
@@ -41,6 +72,7 @@ function BridgeTransactions() {
             : { ...tx, type: "Bridge Out" }
         )
       );
+      setTotalPages(1);
     } catch (err) {
       setError("Failed to fetch bridge transactions");
       console.error("Error fetching transactions:", err);
@@ -50,10 +82,107 @@ function BridgeTransactions() {
   };
 
   useEffect(() => {
-    if (isConnected) {
-      fetchTransactions();
+    fetchTransactions();
+  }, []);
+
+  const searchTypes = [
+    {
+      value: "transaction",
+      label: "Transaction ID",
+      placeholder: "Enter transaction ID...",
+    },
+    {
+      value: "sender",
+      label: "Sender Address",
+      placeholder: "Enter sender address...",
+    },
+    {
+      value: "type",
+      label: "Bridge Type",
+      placeholder:
+        "Enter bridge transaction type... ( in: bridge in, out: bridge out )",
+    },
+    {
+      value: "status",
+      label: "Transaction Status",
+      placeholder:
+        "Enter transaction status... ( 0: pending, 1: completed, 2: failed )",
+    },
+  ];
+
+  const currentSearchType = searchTypes.find(
+    (type) => type.value === searchType
+  );
+
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    const query = searchQuery.toLowerCase().trim();
+    // validate query
+    switch (searchType) {
+      case "transaction":
+        if (
+          query.length !== 64 &&
+          !(query.startsWith("0x") && query.length === 66)
+        ) {
+          setSearchError("Invalid transaction ID format");
+          return;
+        }
+        fetchTransactions({ txId: query });
+        break;
+      case "sender":
+        if (!ethers.isAddress(query)) {
+          setSearchError("Invalid sender address format");
+          return;
+        }
+        fetchTransactions({ sender: query, page: 1 });
+        break;
+      case "type":
+        if (query !== "in" && query !== "out") {
+          setSearchError("Invalid bridge type. Use 'in' or 'out'.");
+          return;
+        }
+        fetchTransactions({
+          type: query === "in" ? "coinToToken" : "tokenToCoin",
+          page: 1,
+        });
+        break;
+      case "status":
+        if (!["0", "1", "2"].includes(query)) {
+          setSearchError("Invalid status. Use '0', '1', or '2'.");
+          return;
+        }
+        fetchTransactions({ status: query, page: 1 });
+        break;
+      default:
+        setSearchError("Invalid search");
+        return;
     }
-  }, [isConnected]);
+    setSearchError("");
+    setIsSearchActive(true);
+  }, [searchQuery, searchType]);
+
+  const clearAllFilters = () => {
+    setIsSearchActive(false);
+    setSearchQuery("");
+    fetchTransactions({ page: 1 });
+  };
+
+  // Handle outside clicks
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const formatValue = (value: string) => {
     // Convert wei to ETH for display
@@ -120,93 +249,19 @@ function BridgeTransactions() {
     }
   };
 
-  // if (!isConnected) {
-  //   return (
-  //     <div
-  //       style={{
-  //         minHeight: "100vh",
-  //         background:
-  //           "linear-gradient(135deg, #0f172a 0%, #581c87 20%, #0f172a 80%)",
-  //         display: "flex",
-  //         alignItems: "center",
-  //         justifyContent: "center",
-  //         padding: "1rem",
-  //         position: "relative",
-  //         overflow: "hidden",
-  //       }}
-  //     >
-  //       {/* Background decoration */}
-  //       <div
-  //         style={{
-  //           position: "absolute",
-  //           top: "-10rem",
-  //           right: "-10rem",
-  //           width: "20rem",
-  //           height: "20rem",
-  //           background: "rgba(168, 85, 247, 0.1)",
-  //           borderRadius: "50%",
-  //           filter: "blur(60px)",
-  //         }}
-  //       ></div>
-  //       <div
-  //         style={{
-  //           position: "absolute",
-  //           bottom: "-10rem",
-  //           left: "-10rem",
-  //           width: "20rem",
-  //           height: "20rem",
-  //           background: "rgba(59, 130, 246, 0.1)",
-  //           borderRadius: "50%",
-  //           filter: "blur(60px)",
-  //         }}
-  //       ></div>
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      setPage((prev) => prev + 1);
+      fetchTransactions();
+    }
+  };
 
-  //       <div
-  //         style={{
-  //           backdropFilter: "blur(20px)",
-  //           background: "rgba(255, 255, 255, 0.05)",
-  //           border: "1px solid rgba(255, 255, 255, 0.1)",
-  //           borderRadius: "1.5rem",
-  //           padding: "3rem",
-  //           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-  //           textAlign: "center",
-  //         }}
-  //       >
-  //         <div
-  //           style={{
-  //             display: "inline-flex",
-  //             alignItems: "center",
-  //             justifyContent: "center",
-  //             width: "4rem",
-  //             height: "4rem",
-  //             background: "linear-gradient(45deg, #a855f7, #3b82f6)",
-  //             borderRadius: "1rem",
-  //             marginBottom: "1rem",
-  //             boxShadow: "0 10px 25px rgba(168, 85, 247, 0.3)",
-  //             fontSize: "2rem",
-  //           }}
-  //         >
-  //           💳
-  //         </div>
-  //         <h2
-  //           style={{
-  //             fontSize: "1.5rem",
-  //             fontWeight: "bold",
-  //             background: "linear-gradient(to right, #ffffff, #d1d5db)",
-  //             WebkitBackgroundClip: "text",
-  //             WebkitTextFillColor: "transparent",
-  //             marginBottom: "1rem",
-  //           }}
-  //         >
-  //           Wallet Connection Required
-  //         </h2>
-  //         <p style={{ color: "#9ca3af", fontSize: "1rem" }}>
-  //           Please connect your wallet to view bridge transactions.
-  //         </p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  const handlePreviousPage = () => {
+    if (page > 1) {
+      setPage((prev) => prev - 1);
+      fetchTransactions();
+    }
+  };
 
   return (
     <div
@@ -250,7 +305,7 @@ function BridgeTransactions() {
         }}
       >
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+        {/* <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <h1
             style={{
               fontSize: "1.2rem",
@@ -260,16 +315,243 @@ function BridgeTransactions() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            Bridge Transactions History
+            Bridge Transactions
           </h1>
-          {/* <p
-            style={{
-              color: "#9ca3af",
-              fontSize: "1rem",
-            }}
-          >
-            Track the bridge transaction history
-          </p> */}
+        </div> */}
+
+        {/* Search Filters */}
+        <div
+          style={{
+            backdropFilter: "blur(20px)",
+            background: "rgba(255, 255, 255, 0.05)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "1rem",
+            padding: "1.5rem",
+            marginBottom: "1.5rem",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+            position: "relative",
+            zIndex: 49, // Lower than the nav bar
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.875rem",
+                fontWeight: "500",
+                color: "#d1d5db",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Search Transactions
+            </label>
+            <div
+              style={{
+                display: "flex",
+                position: "relative",
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "0.5rem",
+                overflow: "visible",
+              }}
+            >
+              {/* Search Type Dropdown */}
+              <div
+                ref={dropdownRef}
+                style={{ position: "relative", zIndex: 101 }}
+              >
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  style={{
+                    padding: "0.75rem 1rem",
+                    background: isDropdownOpen
+                      ? "rgba(168, 85, 247, 0.2)"
+                      : "rgba(255, 255, 255, 0.1)",
+                    border: "none",
+                    borderRight: "1px solid rgba(255, 255, 255, 0.1)",
+                    color: "#ffffff",
+                    fontSize: "0.875rem",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.2s",
+                    minWidth: "140px",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isDropdownOpen) {
+                      e.currentTarget.style.background =
+                        "rgba(255, 255, 255, 0.15)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isDropdownOpen) {
+                      e.currentTarget.style.background =
+                        "rgba(255, 255, 255, 0.1)";
+                    }
+                  }}
+                >
+                  <span>{currentSearchType?.label}</span>
+                  <span
+                    style={{
+                      transform: isDropdownOpen
+                        ? "rotate(180deg)"
+                        : "rotate(0deg)",
+                      transition: "transform 0.2s",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    ▼
+                  </span>
+                </button>
+
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: "0",
+                      minWidth: "200px",
+                      background: "rgba(17, 24, 39, 0.98)",
+                      backdropFilter: "blur(20px)",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "0.5rem",
+                      marginTop: "0.25rem",
+                      zIndex: 1001,
+                      boxShadow: "0 20px 40px -5px rgba(0, 0, 0, 0.4)",
+                    }}
+                  >
+                    {searchTypes.map((type) => (
+                      <button
+                        key={type.value}
+                        onClick={() => {
+                          console.log("Clicked:", type.value); // Debug log
+                          setSearchType(type.value);
+                          setIsDropdownOpen(false);
+                          setSearchQuery(""); // Clear search when changing type
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem 1rem",
+                          background:
+                            searchType === type.value
+                              ? "rgba(168, 85, 247, 0.3)"
+                              : "transparent",
+                          border: "none",
+                          color:
+                            searchType === type.value ? "#ffffff" : "#d1d5db",
+                          fontSize: "0.875rem",
+                          fontWeight: searchType === type.value ? "600" : "400",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (searchType !== type.value) {
+                            e.currentTarget.style.background =
+                              "rgba(255, 255, 255, 0.1)";
+                            e.currentTarget.style.color = "#ffffff";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (searchType !== type.value) {
+                            e.currentTarget.style.background = "transparent";
+                            e.currentTarget.style.color = "#d1d5db";
+                          }
+                        }}
+                      >
+                        <span>{type.label}</span>
+                        {searchType === type.value && (
+                          <span
+                            style={{ color: "#a855f7", fontSize: "0.75rem" }}
+                          >
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Search Input */}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={currentSearchType?.placeholder}
+                style={{
+                  flex: "1",
+                  padding: "0.75rem 1rem",
+                  background: "transparent",
+                  border: "none",
+                  color: "#ffffff",
+                  fontSize: "0.875rem",
+                  outline: "none",
+                }}
+              />
+
+              {/* Clear Button */}
+              {isSearchActive && (
+                <button
+                  onClick={clearAllFilters}
+                  style={{
+                    padding: "0.75rem",
+                    background: "rgba(239, 68, 68, 0.1)",
+                    border: "none",
+                    borderLeft: "1px solid rgba(255, 255, 255, 0.1)",
+                    color: "#ef4444",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
+            {/* Search Results Info */}
+            {isSearchActive && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  padding: "0.75rem 1rem",
+                  background: searchError
+                    ? "rgba(239, 68, 68, 0.1)"
+                    : "rgba(59, 130, 246, 0.1)",
+                  border: searchError
+                    ? "1px solid rgba(239, 68, 68, 0.2)"
+                    : "1px solid rgba(59, 130, 246, 0.2)",
+                  borderRadius: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: searchError ? "#ef4444" : "#3b82f6",
+                }}
+              >
+                {loading
+                  ? "Searching for transactions..."
+                  : searchError
+                  ? `Error: ${searchError}`
+                  : `Found ${transactions.length} transactions`}{" "}
+                {searchQuery &&
+                  ` • ${currentSearchType?.label}: "${searchQuery}"`}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Main Card */}
@@ -279,7 +561,7 @@ function BridgeTransactions() {
             background: "rgba(255, 255, 255, 0.05)",
             border: "1px solid rgba(255, 255, 255, 0.1)",
             borderRadius: "1.5rem",
-            padding: "2rem",
+            padding: "0.75rem 2rem",
             boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
           }}
         >
@@ -335,34 +617,41 @@ function BridgeTransactions() {
             </div>
           )}
 
-          {!loading && !error && transactions.length === 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "3rem",
-                color: "#9ca3af",
-                fontSize: "1.125rem",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "3rem",
-                  marginBottom: "1rem",
-                  opacity: 0.5,
-                }}
-              >
-                📝
-              </div>
-              <p>No bridge transactions found.</p>
-            </div>
-          )}
+          {(!loading && !error && !isSearchActive) ||
+            (!loading &&
+              !error &&
+              isSearchActive &&
+              transactions.length === 0 && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "3rem",
+                    color: "#9ca3af",
+                    fontSize: "1.125rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "3rem",
+                      marginBottom: "1rem",
+                      opacity: 0.5,
+                    }}
+                  >
+                    {isSearchActive ? "🔍" : "📝"}
+                  </div>
+                  <p>
+                    {isSearchActive
+                      ? "No transactions match your search criteria."
+                      : "No bridge transactions found."}
+                  </p>
+                </div>
+              ))}
 
           {!loading && !error && transactions.length > 0 && (
             <>
               {/* Desktop Table View */}
               <div
                 style={{
-                  // display: "block",
                   overflowX: "auto",
                 }}
                 className="desktop-view"
@@ -553,9 +842,7 @@ function BridgeTransactions() {
                                 tx.type === "Bridge In" ? "#22c55e" : "#3b82f6",
                             }}
                           >
-                            {/* <span>{tx.type === "Bridge In" ? "⬇️" : "⬆️"}</span> */}
                             <span>{tx.type === "Bridge In" ? "←" : "→"}</span>
-
                             <span>{tx.type}</span>
                           </span>
                         </td>
@@ -642,76 +929,115 @@ function BridgeTransactions() {
             </>
           )}
 
-          {/* Refresh Button */}
-          <div style={{ marginTop: "2rem", textAlign: "center" }}>
-            <button
-              onClick={fetchTransactions}
-              disabled={loading}
+          {/* Pagination */}
+          {!loading && !error && transactions.length > 0 && (
+            <div
               style={{
-                padding: "0.75rem 2rem",
-                background: loading
-                  ? "linear-gradient(to right, #6b7280, #6b7280)"
-                  : "linear-gradient(to right, #a855f7, #3b82f6)",
-                color: "white",
-                fontWeight: "600",
-                fontSize: "0.875rem",
-                borderRadius: "0.75rem",
-                border: "none",
-                cursor: loading ? "not-allowed" : "pointer",
-                transition: "all 0.2s",
-                transform: "scale(1)",
-                boxShadow: loading
-                  ? "none"
-                  : "0 10px 25px rgba(168, 85, 247, 0.3)",
                 display: "flex",
+                justifyContent: "center",
                 alignItems: "center",
+                margin: "0.5rem 0",
                 gap: "0.5rem",
-                margin: "0 auto",
-              }}
-              onMouseEnter={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.transform = "scale(1.05)";
-                  e.currentTarget.style.background =
-                    "linear-gradient(to right, #9333ea, #2563eb)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.background =
-                    "linear-gradient(to right, #a855f7, #3b82f6)";
-                }
               }}
             >
-              {loading ? (
-                <>
-                  <div
-                    style={{
-                      width: "1rem",
-                      height: "1rem",
-                      border: "2px solid rgba(255, 255, 255, 0.3)",
-                      borderTop: "2px solid white",
-                      borderRadius: "50%",
-                      animation: "spin 1s linear infinite",
-                    }}
-                  ></div>
-                  <span>Refreshing...</span>
-                </>
-              ) : (
-                <>
-                  <span>🔄</span>
-                  <span>Refresh Transactions</span>
-                </>
-              )}
-            </button>
-          </div>
+              <button
+                onClick={handlePreviousPage}
+                disabled={page === 1}
+                style={{
+                  padding: "0.5rem 0.75rem",
+                  background: "linear-gradient(to right, #a855f7, #3b82f6)",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  color: "#e5e7eb",
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  cursor: page === 1 ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  transform: "scale(1)",
+                  boxShadow: "0 10px 25px rgba(168, 85, 247, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.transform = "scale(1.05)";
+                    e.currentTarget.style.background =
+                      "linear-gradient(to right, #9333ea, #2563eb)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.transform = "scale(1)";
+                    e.currentTarget.style.background =
+                      "linear-gradient(to right, #a855f7, #3b82f6)";
+                  }
+                }}
+              >
+                <span>←</span>
+                <span>Prev</span>
+              </button>
+              <span
+                style={{
+                  padding: "0.5rem 0.75rem",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "0.5rem",
+                  color: "#e5e7eb",
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  marginLeft: "0.5rem",
+                  marginRight: "0.5rem",
+                }}
+              >
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={handleNextPage}
+                disabled={page === totalPages}
+                style={{
+                  padding: "0.5rem 0.75rem",
+                  background: "linear-gradient(to right, #a855f7, #3b82f6)",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  color: "#e5e7eb",
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  cursor: page === totalPages ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  transform: "scale(1)",
+                  boxShadow: "0 10px 25px rgba(168, 85, 247, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.transform = "scale(1.05)";
+                    e.currentTarget.style.background =
+                      "linear-gradient(to right, #9333ea, #2563eb)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.transform = "scale(1)";
+                    e.currentTarget.style.background =
+                      "linear-gradient(to right, #a855f7, #3b82f6)";
+                  }
+                }}
+              >
+                <span>Next</span>
+                <span>→</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Decorative Elements */}
         <div
           style={{
             position: "absolute",
-            top: "1rem",
+            top: "7.5rem",
             left: "0rem",
             width: "1rem",
             height: "1rem",
@@ -723,7 +1049,7 @@ function BridgeTransactions() {
         <div
           style={{
             position: "absolute",
-            top: "1rem",
+            top: "7.5rem",
             right: "0rem",
             width: "1rem",
             height: "1rem",

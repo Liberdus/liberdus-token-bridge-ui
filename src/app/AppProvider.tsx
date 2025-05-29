@@ -20,7 +20,7 @@ export default function AppProviders({ children }: { children: ReactNode }) {
         <RainbowKitProvider>
           <div
             style={{
-              height: "100vh",
+              minHeight: "100vh",
               background:
                 "linear-gradient(135deg, #0f172a 0%, #581c87 20%, #0f172a 80%)",
             }}
