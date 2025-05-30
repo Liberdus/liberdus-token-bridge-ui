@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { coordinatorServer } from "@/app/wagmi";
 import { ethers } from "ethers";
 import { toEthereumAddress } from "@/utils/transformAddress";
@@ -30,6 +30,23 @@ export enum TransactionType {
   BRIDGE_OUT = 1, // TOKEN to COIN
 }
 
+export function isTransactionType(value: unknown): value is TransactionType {
+  return (
+    value === TransactionType.BRIDGE_IN || value === TransactionType.BRIDGE_OUT
+  );
+}
+
+export function isTransactionStatus(
+  value: unknown
+): value is TransactionStatus {
+  return (
+    value === TransactionStatus.PENDING ||
+    value === TransactionStatus.PROCESSING ||
+    value === TransactionStatus.COMPLETED ||
+    value === TransactionStatus.FAILED
+  );
+}
+
 function BridgeTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -53,8 +70,8 @@ function BridgeTransactions() {
     page?: number;
     txId?: string;
     sender?: string;
-    type?: string;
-    status?: string;
+    type?: TransactionType;
+    status?: TransactionStatus;
   } = {}) => {
     setLoading(true);
     setError(null);
@@ -65,9 +82,9 @@ function BridgeTransactions() {
       txURL += `?txId=${txId}`;
     } else if (sender) {
       txURL += `?senderAddress=${sender}` + `&page=${page}`;
-    } else if (type) {
+    } else if (isTransactionType(type)) {
       txURL += `?type=${type}` + `&page=${page}`;
-    } else if (status) {
+    } else if (isTransactionStatus(status)) {
       txURL += `?status=${status}` + `&page=${page}`;
     } else if (page) {
       txURL += `?page=${page}`;
@@ -112,7 +129,7 @@ function BridgeTransactions() {
       value: "status",
       label: "Transaction Status",
       placeholder:
-        "Enter transaction status... ( 0: pending, 1: completed, 2: failed )",
+        "Enter transaction status... ( 0: pending, 1: processing, 2: completed, 3: failed )",
     },
   ];
 
@@ -120,52 +137,75 @@ function BridgeTransactions() {
     (type) => type.value === searchType
   );
 
+  const validateSearchQuery = useCallback(
+    (searchType: string, query: string, page = 1): boolean => {
+      switch (searchType) {
+        case "transaction":
+          if (
+            query.length !== 64 &&
+            !(query.startsWith("0x") && query.length === 66)
+          ) {
+            setSearchError("Invalid transaction ID format");
+            return false;
+          }
+          fetchTransactions({ txId: query });
+          break;
+
+        case "sender":
+          if (!ethers.isAddress(query)) {
+            setSearchError("Invalid sender address format");
+            return false;
+          }
+          fetchTransactions({ sender: query, page });
+          break;
+
+        case "type":
+          if (query !== "in" && query !== "out") {
+            setSearchError("Invalid bridge type. Use 'in' or 'out'.");
+            return false;
+          }
+          fetchTransactions({
+            type:
+              query === "in"
+                ? TransactionType.BRIDGE_IN
+                : TransactionType.BRIDGE_OUT,
+            page,
+          });
+          break;
+
+        case "status":
+          const queryAsNumber = parseInt(query);
+          if (!isTransactionStatus(queryAsNumber)) {
+            setSearchError("Invalid status. Use '0', '1', '2' or '3'.");
+            return false;
+          }
+          fetchTransactions({ status: queryAsNumber, page });
+          break;
+
+        default:
+          setSearchError("Invalid search");
+          return false;
+      }
+
+      return true; // ✅ passed validation
+    },
+    []
+  );
+
   useEffect(() => {
     if (!searchQuery.trim()) return;
-    const query = searchQuery.toLowerCase().trim();
-    // validate query
-    switch (searchType) {
-      case "transaction":
-        if (
-          query.length !== 64 &&
-          !(query.startsWith("0x") && query.length === 66)
-        ) {
-          setSearchError("Invalid transaction ID format");
-          return;
-        }
-        fetchTransactions({ txId: query });
-        break;
-      case "sender":
-        if (!ethers.isAddress(query)) {
-          setSearchError("Invalid sender address format");
-          return;
-        }
-        fetchTransactions({ sender: query, page: 1 });
-        break;
-      case "type":
-        if (query !== "in" && query !== "out") {
-          setSearchError("Invalid bridge type. Use 'in' or 'out'.");
-          return;
-        }
-        fetchTransactions({
-          type: query === "in" ? "coinToToken" : "tokenToCoin",
-          page: 1,
-        });
-        break;
-      case "status":
-        if (!["0", "1", "2"].includes(query)) {
-          setSearchError("Invalid status. Use '0', '1', or '2'.");
-          return;
-        }
-        fetchTransactions({ status: query, page: 1 });
-        break;
-      default:
-        setSearchError("Invalid search");
-        return;
-    }
-    setSearchError("");
-    setIsSearchActive(true);
-  }, [searchQuery, searchType]);
+
+    const timeout = setTimeout(() => {
+      const query = searchQuery.toLowerCase().trim();
+      const isValid = validateSearchQuery(searchType, query, 1);
+      setIsSearchActive(true);
+      if (isValid) {
+        setSearchError(null);
+      }
+    }, 500); // debounce
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery, searchType, validateSearchQuery]);
 
   const clearAllFilters = () => {
     setIsSearchActive(false);
@@ -207,13 +247,9 @@ function BridgeTransactions() {
     return `${ethAddress.slice(0, 6)}...${ethAddress.slice(-4)}`;
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    const localTime = moment
-      .utc(dateString)
-      .local()
-      .format("YYYY-MM-DD HH:mm:ss");
-    return moment(localTime).fromNow();
+  const formatDate = (txTimestamp?: number) => {
+    if (!txTimestamp) return "N/A";
+    return moment(txTimestamp).fromNow();
   };
 
   const getStatusColor = (status: TransactionStatus) => {
@@ -257,15 +293,29 @@ function BridgeTransactions() {
 
   const handleNextPage = () => {
     if (page < totalPages) {
-      setPage((prev) => prev + 1);
-      fetchTransactions();
+      const nextPage = page + 1;
+      if (isSearchActive) {
+        const query = searchQuery.toLowerCase().trim();
+        const valid = validateSearchQuery(searchType, query, nextPage);
+        if (valid) setPage(nextPage);
+      } else {
+        setPage(nextPage);
+        fetchTransactions({ page: nextPage });
+      }
     }
   };
 
   const handlePreviousPage = () => {
     if (page > 1) {
-      setPage((prev) => prev - 1);
-      fetchTransactions();
+      const prevPage = page - 1;
+      if (isSearchActive) {
+        const query = searchQuery.toLowerCase().trim();
+        const valid = validateSearchQuery(searchType, query, prevPage);
+        if (valid) setPage(prevPage);
+      } else {
+        fetchTransactions({ page: prevPage });
+        setPage(prevPage);
+      }
     }
   };
 
@@ -434,7 +484,6 @@ function BridgeTransactions() {
                       <button
                         key={type.value}
                         onClick={() => {
-                          console.log("Clicked:", type.value); // Debug log
                           setSearchType(type.value);
                           setIsDropdownOpen(false);
                           setSearchQuery(""); // Clear search when changing type
@@ -741,7 +790,7 @@ function BridgeTransactions() {
                           borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
                         }}
                       >
-                        Created
+                        Issued
                       </th>
                       <th
                         style={{
@@ -905,7 +954,7 @@ function BridgeTransactions() {
                             color: "#9ca3af",
                           }}
                         >
-                          {formatDate(tx.createdAt)}
+                          {formatDate(tx.txTimestamp)}
                         </td>
                         <td
                           style={{
