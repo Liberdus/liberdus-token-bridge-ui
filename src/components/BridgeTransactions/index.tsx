@@ -14,6 +14,7 @@ export interface Transaction {
   txTimestamp: number;
   status: TransactionStatus;
   receipt: string;
+  reason?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -59,6 +60,8 @@ function BridgeTransactions() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [tooltipVisible, setTooltipVisible] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   const fetchTransactions = async ({
     page = 1,
@@ -317,6 +320,19 @@ function BridgeTransactions() {
         setPage(prevPage);
       }
     }
+  };
+
+  const handleTooltipShow = (txId: string, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTooltipPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10,
+    });
+    setTooltipVisible(txId);
+  };
+
+  const handleTooltipHide = () => {
+    setTooltipVisible(null);
   };
 
   return (
@@ -912,40 +928,128 @@ function BridgeTransactions() {
                           </span>
                         </td>
                         <td style={{ padding: "1rem" }}>
-                          <span
+                          <div
                             style={{
-                              display: "inline-flex",
+                              display: "flex",
                               alignItems: "center",
                               gap: "0.5rem",
-                              padding: "0.25rem 0.75rem",
-                              background: getStatusBg(tx.status),
-                              border: getStatusBorder(tx.status),
-                              borderRadius: "0.5rem",
-                              fontSize: "0.75rem",
-                              fontWeight: "500",
-                              color: getStatusColor(tx.status),
                             }}
                           >
-                            <div
+                            <span
                               style={{
-                                width: "0.5rem",
-                                height: "0.5rem",
-                                background: getStatusColor(tx.status),
-                                borderRadius: "50%",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                                padding: "0.25rem 0.75rem",
+                                background: getStatusBg(tx.status),
+                                border: getStatusBorder(tx.status),
+                                borderRadius: "0.5rem",
+                                fontSize: "0.75rem",
+                                fontWeight: "500",
+                                color: getStatusColor(tx.status),
                               }}
-                            ></div>
-                            <span>
-                              {tx.status === TransactionStatus.COMPLETED
-                                ? "Completed"
-                                : tx.status === TransactionStatus.FAILED
-                                ? "Failed"
-                                : TransactionStatus.PENDING === tx.status
-                                ? "Pending"
-                                : TransactionStatus.PROCESSING === tx.status
-                                ? "Processing"
-                                : "Unknown"}
+                            >
+                              <div
+                                style={{
+                                  width: "0.5rem",
+                                  height: "0.5rem",
+                                  background: getStatusColor(tx.status),
+                                  borderRadius: "50%",
+                                }}
+                              ></div>
+                              <span>
+                                {tx.status === TransactionStatus.COMPLETED
+                                  ? "Completed"
+                                  : tx.status === TransactionStatus.FAILED
+                                  ? "Failed"
+                                  : tx.status === TransactionStatus.PENDING
+                                  ? "Pending"
+                                  : tx.status === TransactionStatus.PROCESSING
+                                  ? "Processing"
+                                  : "Unknown"}
+                              </span>
                             </span>
-                          </span>
+
+                            {/* Add tooltip icon for failed transactions */}
+                            {tx.status === TransactionStatus.FAILED &&
+                              tx.reason && (
+                                <div
+                                  style={{
+                                    position: "relative",
+                                    display: "inline-block",
+                                  }}
+                                  onMouseEnter={(e) =>
+                                    handleTooltipShow(tx.txId, e)
+                                  }
+                                  onMouseLeave={handleTooltipHide}
+                                >
+                                  <div
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      color: "#ef4444",
+                                      cursor: "help",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      width: "1.5rem",
+                                      height: "1.5rem",
+                                      borderRadius: "50%",
+                                      background: "rgba(239, 68, 68, 0.1)",
+                                      border:
+                                        "1px solid rgba(239, 68, 68, 0.2)",
+                                      transition:
+                                        "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                      backdropFilter: "blur(10px)",
+                                      boxShadow:
+                                        "0 4px 12px rgba(239, 68, 68, 0.2)",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background =
+                                        "rgba(239, 68, 68, 0.2)";
+                                      e.currentTarget.style.transform =
+                                        "scale(1.1)";
+                                      e.currentTarget.style.boxShadow =
+                                        "0 6px 20px rgba(239, 68, 68, 0.3)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background =
+                                        "rgba(239, 68, 68, 0.1)";
+                                      e.currentTarget.style.transform =
+                                        "scale(1)";
+                                      e.currentTarget.style.boxShadow =
+                                        "0 4px 12px rgba(239, 68, 68, 0.2)";
+                                    }}
+                                  >
+                                    <svg
+                                      width="12"
+                                      height="12"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                      <polyline points="14,2 14,8 20,8"></polyline>
+                                      <line
+                                        x1="16"
+                                        y1="13"
+                                        x2="8"
+                                        y2="13"
+                                      ></line>
+                                      <line
+                                        x1="16"
+                                        y1="17"
+                                        x2="8"
+                                        y2="17"
+                                      ></line>
+                                      <polyline points="10,9 9,9 8,9"></polyline>
+                                    </svg>
+                                  </div>
+                                </div>
+                              )}
+                          </div>
                         </td>
                         <td
                           style={{
@@ -1108,6 +1212,131 @@ function BridgeTransactions() {
           )}
         </div>
 
+        {tooltipVisible && (
+          <div
+            style={{
+              position: "fixed",
+              left: `${tooltipPosition.x}px`,
+              top: `${tooltipPosition.y}px`,
+              transform: "translateX(-50%) translateY(-100%)",
+              background:
+                "linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(31, 41, 55, 0.98))",
+              backdropFilter: "blur(25px)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              borderRadius: "0.75rem",
+              padding: "1rem 1.25rem",
+              fontSize: "0.875rem",
+              color: "#ffffff",
+              maxWidth: "320px",
+              minWidth: "200px",
+              wordWrap: "break-word",
+              zIndex: 1000,
+              boxShadow:
+                "0 25px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)",
+              pointerEvents: "none",
+              animation: "tooltipFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
+            {/* Header with icon */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                marginBottom: "0.75rem",
+                paddingBottom: "0.5rem",
+                borderBottom: "1px solid rgba(239, 68, 68, 0.2)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "1.25rem",
+                  height: "1.25rem",
+                  borderRadius: "0.25rem",
+                  background: "rgba(239, 68, 68, 0.15)",
+                }}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </div>
+              <span
+                style={{
+                  fontWeight: "600",
+                  color: "#ef4444",
+                  fontSize: "0.875rem",
+                  background: "linear-gradient(to right, #ef4444, #dc2626)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Transaction Failed
+              </span>
+            </div>
+
+            {/* Reason content */}
+            <div
+              style={{
+                color: "#e5e7eb",
+                lineHeight: "1.5",
+                fontSize: "0.875rem",
+              }}
+            >
+              {(() => {
+                const tx = transactions.find((t) => t.txId === tooltipVisible);
+                return tx?.reason || "No specific reason provided";
+              })()}
+            </div>
+
+            {/* Enhanced tooltip arrow */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: "-6px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "0",
+                height: "0",
+                borderLeft: "6px solid transparent",
+                borderRight: "6px solid transparent",
+                borderTop: "6px solid rgba(17, 24, 39, 0.98)",
+                filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))",
+              }}
+            ></div>
+
+            {/* Subtle glow effect */}
+            <div
+              style={{
+                position: "absolute",
+                top: "-2px",
+                left: "-2px",
+                right: "-2px",
+                bottom: "-2px",
+                background:
+                  "linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05))",
+                borderRadius: "0.875rem",
+                zIndex: -1,
+                filter: "blur(8px)",
+                opacity: 0.6,
+              }}
+            ></div>
+          </div>
+        )}
+
         {/* Decorative Elements */}
         <div
           style={{
@@ -1150,6 +1379,16 @@ function BridgeTransactions() {
           100% {
             transform: scale(2);
             opacity: 0;
+          }
+        }
+        @keyframes tooltipFadeIn {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-100%) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-100%) scale(1);
           }
         }
         .transaction-row:hover {
