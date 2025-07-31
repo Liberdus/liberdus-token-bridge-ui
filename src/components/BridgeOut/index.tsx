@@ -7,6 +7,7 @@ import { contractAddress, wagmiConfig } from "@/app/wagmi";
 import { abi } from "../../../abi.json";
 import { toast } from "react-toastify";
 import { useAccount } from "wagmi";
+import { isNetworkSupported } from "@/config/networks";
 
 function BridgeOut() {
   const { isConnected } = useAccount({ config: wagmiConfig });
@@ -82,6 +83,11 @@ function BridgeOut() {
     setIsLoading(true);
     try {
       if (!contract || !signer) throw new Error("Contract or signer not ready");
+      
+      // Check if the current network is supported
+      if (!isNetworkSupported(Number(chainId))) {
+        throw new Error(`Network with Chain ID ${chainId} is not supported. Please switch to a supported network.`);
+      }
 
       const contractWithSigner = contract.connect(signer) as any;
       const bridgeAmount = ethers.parseUnits(amount, 18);
@@ -255,30 +261,69 @@ function BridgeOut() {
           {/* Connection Status */}
           <div style={{ marginBottom: "1.5rem" }}>
             {isConnected ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "1rem",
-                  background: "rgba(34, 197, 94, 0.1)",
-                  border: "1px solid rgba(34, 197, 94, 0.2)",
-                  borderRadius: "0.75rem",
-                }}
-              >
+              <>
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.75rem",
+                    justifyContent: "space-between",
+                    padding: "1rem",
+                    background: "rgba(34, 197, 94, 0.1)",
+                    border: "1px solid rgba(34, 197, 94, 0.2)",
+                    borderRadius: "0.75rem",
+                    marginBottom: !isNetworkSupported(Number(chainId)) ? "0.75rem" : "0",
                   }}
                 >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "1.25rem",
+                        height: "1.25rem",
+                        background: "#22c55e",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "0.7rem",
+                        color: "white",
+                      }}
+                    >
+                      ✓
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          color: "#22c55e",
+                          fontSize: "0.875rem",
+                          fontWeight: "500",
+                          margin: 0,
+                        }}
+                      >
+                        Wallet Connected
+                      </p>
+                      <p
+                        style={{
+                          color: "#9ca3af",
+                          fontSize: "0.75rem",
+                          margin: 0,
+                        }}
+                      >
+                        {formatAddress(signer?.address)}
+                      </p>
+                    </div>
+                  </div>
                   <div
                     style={{
                       width: "1.25rem",
                       height: "1.25rem",
                       background: "#22c55e",
-                      borderRadius: "50%",
+                      borderRadius: "0.25rem",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -286,46 +331,70 @@ function BridgeOut() {
                       color: "white",
                     }}
                   >
-                    ✓
-                  </div>
-                  <div>
-                    <p
-                      style={{
-                        color: "#22c55e",
-                        fontSize: "0.875rem",
-                        fontWeight: "500",
-                        margin: 0,
-                      }}
-                    >
-                      Wallet Connected
-                    </p>
-                    <p
-                      style={{
-                        color: "#9ca3af",
-                        fontSize: "0.75rem",
-                        margin: 0,
-                      }}
-                    >
-                      {formatAddress(signer?.address)}
-                    </p>
+                    💳
                   </div>
                 </div>
-                <div
-                  style={{
-                    width: "1.25rem",
-                    height: "1.25rem",
-                    background: "#22c55e",
-                    borderRadius: "0.25rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "0.7rem",
-                    color: "white",
-                  }}
-                >
-                  💳
-                </div>
-              </div>
+                
+                {/* Unsupported Network Warning */}
+                {!isNetworkSupported(Number(chainId)) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "1rem",
+                      background: "rgba(239, 68, 68, 0.1)",
+                      border: "1px solid rgba(239, 68, 68, 0.2)",
+                      borderRadius: "0.75rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "1.25rem",
+                          height: "1.25rem",
+                          background: "#ef4444",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.7rem",
+                          color: "white",
+                        }}
+                      >
+                        ⚠️
+                      </div>
+                      <div>
+                        <p
+                          style={{
+                            color: "#ef4444",
+                            fontSize: "0.875rem",
+                            fontWeight: "500",
+                            margin: 0,
+                          }}
+                        >
+                          Unsupported Network
+                        </p>
+                        <p
+                          style={{
+                            color: "#9ca3af",
+                            fontSize: "0.75rem",
+                            margin: 0,
+                          }}
+                        >
+                          Please switch to a supported network from the dropdown in the header
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div
                 style={{
@@ -537,16 +606,16 @@ function BridgeOut() {
             disabled={
               isLoading ||
               (isConnected && (amount === "0" || !amount)) ||
-              (isConnected && (balance === "0" || !balance))
+              (isConnected && (balance === "0" || !balance)) ||
+              (isConnected && !isNetworkSupported(Number(chainId)))
             }
             style={{
               width: "100%",
               marginTop: "2rem",
               padding: "1rem",
-              background: "linear-gradient(to right, #a855f7, #3b82f6)",
-              // background: !isConnected
-              //   ? "linear-gradient(to right, #6b7280, #6b7280)"
-              //   : "linear-gradient(to right, #a855f7, #3b82f6)",
+              background: isConnected && !isNetworkSupported(Number(chainId))
+                ? "linear-gradient(to right, #ef4444, #f87171)"
+                : "linear-gradient(to right, #a855f7, #3b82f6)",
               color: "white",
               fontWeight: "600",
               fontSize: "1rem",
@@ -555,7 +624,8 @@ function BridgeOut() {
               cursor:
                 isLoading ||
                 (isConnected && (amount === "0" || !amount)) ||
-                (isConnected && (balance === "0" || !balance))
+                (isConnected && (balance === "0" || !balance)) ||
+                (isConnected && !isNetworkSupported(Number(chainId)))
                   ? "not-allowed"
                   : "pointer",
               transition: "all 0.2s",
@@ -563,31 +633,35 @@ function BridgeOut() {
               boxShadow:
                 isLoading ||
                 (isConnected && (amount === "0" || !amount)) ||
-                (isConnected && (balance === "0" || !balance))
+                (isConnected && (balance === "0" || !balance)) ||
+                (isConnected && !isNetworkSupported(Number(chainId)))
                   ? "none"
                   : "0 10px 25px rgba(168, 85, 247, 0.3)",
             }}
             onMouseEnter={(e) => {
-              if (!e.currentTarget.disabled) {
+              if (!e.currentTarget.disabled && !(isConnected && !isNetworkSupported(Number(chainId)))) {
                 e.currentTarget.style.transform = "scale(1.02)";
                 e.currentTarget.style.background =
                   "linear-gradient(to right, #9333ea, #2563eb)";
               }
             }}
             onMouseLeave={(e) => {
-              if (!e.currentTarget.disabled) {
+              if (!e.currentTarget.disabled && !(isConnected && !isNetworkSupported(Number(chainId)))) {
                 e.currentTarget.style.transform = "scale(1)";
                 e.currentTarget.style.background =
                   "linear-gradient(to right, #a855f7, #3b82f6)";
+              } else if (isConnected && !isNetworkSupported(Number(chainId))) {
+                e.currentTarget.style.background =
+                  "linear-gradient(to right, #ef4444, #f87171)";
               }
             }}
             onMouseDown={(e) => {
-              if (!e.currentTarget.disabled) {
+              if (!e.currentTarget.disabled && !(isConnected && !isNetworkSupported(Number(chainId)))) {
                 e.currentTarget.style.transform = "scale(0.98)";
               }
             }}
             onMouseUp={(e) => {
-              if (!e.currentTarget.disabled) {
+              if (!e.currentTarget.disabled && !(isConnected && !isNetworkSupported(Number(chainId)))) {
                 e.currentTarget.style.transform = "scale(1.02)";
               }
             }}
@@ -615,6 +689,8 @@ function BridgeOut() {
               </div>
             ) : !isConnected ? (
               "Connect Wallet"
+            ) : !isNetworkSupported(Number(chainId)) ? (
+              "Unsupported Network ⚠️"
             ) : (
               "Bridge Tokens"
             )}
