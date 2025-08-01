@@ -28,7 +28,20 @@ export default function AppProviders({ children }: { children: ReactNode }) {
             <NavBar>{children}</NavBar>
           </div>
 
-          <ToastContainer position="bottom-right" />
+          <ToastContainer
+            position="bottom-right"
+            theme="dark"
+            style={{
+              fontSize: "0.875rem",
+            }}
+            toastStyle={{
+              background: "rgba(0, 0, 0, 0.9)",
+              backdropFilter: "blur(20px)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "0.75rem",
+              color: "#ffffff",
+            }}
+          />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

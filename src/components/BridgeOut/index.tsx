@@ -1,106 +1,360 @@
 "use client";
 
 import "react-toastify/dist/ReactToastify.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ethers } from "ethers";
-import { contractAddress, wagmiConfig } from "@/app/wagmi";
+import {
+  wagmiConfig,
+  getContractAddress,
+  isSupportedChain,
+  getChainName,
+} from "@/app/wagmi";
 import { abi } from "../../../abi.json";
 import { toast } from "react-toastify";
 import { useAccount } from "wagmi";
 
 function BridgeOut() {
-  const { isConnected } = useAccount({ config: wagmiConfig });
-
+  const { isConnected } = useAccount({
+    config: wagmiConfig,
+  });
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  const contract = provider
-    ? new ethers.Contract(contractAddress, abi, provider)
-    : null;
-
   const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
-
   const [amount, setAmount] = useState("0");
   const [balance, setBalance] = useState("0");
   const [chainId, setChainId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [contract, setContract] = useState<ethers.Contract | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
-  useEffect(() => {
-    if (!isConnected) return;
-    if (window.ethereum) {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      setProvider(provider);
+  const isCurrentChainSupported = chainId ? isSupportedChain(chainId) : false;
+
+  // Debounced balance fetching function
+  const fetchBalance = useCallback(async () => {
+    if (
+      !contract ||
+      !signer?.address ||
+      !chainId ||
+      !isSupportedChain(chainId)
+    ) {
+      setBalance("0");
+      setAmount("0");
+      return;
     }
-  }, [isConnected]);
 
-  useEffect(() => {
-    async function getChainId() {
-      if (provider) {
-        const network = await provider.getNetwork();
-        console.log("network", network.chainId);
-        setChainId(Number(network.chainId));
+    setIsLoadingBalance(true);
+    try {
+      // Create a fresh contract instance to avoid stale network errors
+      const contractAddress = getContractAddress(chainId);
+      const freshProvider = new ethers.BrowserProvider(window.ethereum);
+      const freshContract = new ethers.Contract(
+        contractAddress,
+        abi,
+        freshProvider
+      );
+
+      const balance = await freshContract.balanceOf(signer.address);
+      setBalance(ethers.formatEther(balance));
+    } catch (error) {
+      console.error("Error getting balance:", error);
+      setBalance("0");
+      setAmount("0");
+      // Don't show toast for network change errors
+      if (!error.message?.includes("network changed")) {
+        toast.error("Failed to fetch balance");
       }
+    } finally {
+      setIsLoadingBalance(false);
     }
+  }, [contract, signer?.address, chainId]);
 
-    getChainId();
-
-    // Optional: listen for network changes
-    if (window.ethereum) {
-      window.ethereum.on("chainChanged", (newChainId: string) => {
-        setChainId(Number(newChainId));
-      });
-    }
-
-    return () => {
+  // Initialize provider and check connection status on mount
+  useEffect(() => {
+    async function initializeProvider() {
       if (window.ethereum) {
-        window.ethereum.removeListener("chainChanged", () => {
-          console.log("chainChanged listener removed");
-        });
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        setProvider(provider);
+
+        // Check if already connected
+        try {
+          const accounts = await window.ethereum.request({
+            method: "eth_accounts",
+          });
+          if (accounts.length > 0) {
+            // Already connected, get signer
+            const signer = await provider.getSigner();
+            setSigner(signer);
+          }
+        } catch (error) {
+          console.error("Error checking connection status:", error);
+        }
+
+        // Get current network
+        try {
+          const network = await provider.getNetwork();
+          setChainId(Number(network.chainId));
+        } catch (error) {
+          console.error("Error getting network:", error);
+        }
       }
-    };
-  }, [provider]);
+    }
+
+    initializeProvider();
+  }, []);
+
+  // Update provider when connection status changes
+  useEffect(() => {
+    if (!isConnected) {
+      setSigner(null);
+      setBalance("0"); // Reset balance when disconnected
+      setAmount("0");
+      return;
+    }
+
+    if (window.ethereum && !provider) {
+      const newProvider = new ethers.BrowserProvider(window.ethereum);
+      setProvider(newProvider);
+    }
+  }, [isConnected, provider]);
 
   useEffect(() => {
-    async function getBalance() {
-      if (contract && signer) {
-        const balance = await contract.balanceOf(signer?.address);
-        setBalance(ethers.formatEther(balance));
+    async function getChainIdAndSetup() {
+      if (!provider) return;
+
+      try {
+        const network = await provider.getNetwork();
+        const newChainId = Number(network.chainId);
+        console.log("network", network.chainId);
+
+        // Reset balance when chain changes
+        if (chainId !== null && chainId !== newChainId) {
+          setBalance("0");
+          setAmount("0");
+          setContract(null); // Clear old contract immediately
+        }
+
+        setChainId(newChainId);
+      } catch (error) {
+        // Ignore network change errors during transitions
+        if (!error.message?.includes("network changed")) {
+          console.error("Error getting network:", error);
+        }
       }
     }
 
-    if (isConnected) {
-      getBalance();
+    getChainIdAndSetup();
+
+    // Listen for network changes
+    if (window.ethereum) {
+      const handleChainChanged = async (newChainId: string) => {
+        const chainIdNum = Number(newChainId);
+        console.log("Chain changed to:", chainIdNum);
+
+        // Reset state immediately
+        setBalance("0");
+        setAmount("0");
+        setContract(null);
+        setChainId(chainIdNum);
+
+        // Create new provider for the new network
+        try {
+          const newProvider = new ethers.BrowserProvider(window.ethereum);
+          setProvider(newProvider);
+
+          // Get new signer if connected
+          if (isConnected) {
+            const newSigner = await newProvider.getSigner();
+            setSigner(newSigner);
+          }
+        } catch (error) {
+          console.error(
+            "Error setting up new provider after chain change:",
+            error
+          );
+        }
+      };
+
+      const handleAccountsChanged = async (accounts: string[]) => {
+        if (accounts.length === 0) {
+          // User disconnected
+          setSigner(null);
+          setBalance("0");
+          setAmount("0");
+        } else if (provider) {
+          // User connected or switched accounts
+          try {
+            const signer = await provider.getSigner();
+            setSigner(signer);
+            // Balance will be fetched in the balance effect
+          } catch (error) {
+            console.error("Error getting signer after account change:", error);
+          }
+        }
+      };
+
+      window.ethereum.on("chainChanged", handleChainChanged);
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+
+      return () => {
+        if (window.ethereum) {
+          window.ethereum.removeListener("chainChanged", handleChainChanged);
+          window.ethereum.removeListener(
+            "accountsChanged",
+            handleAccountsChanged
+          );
+        }
+      };
     }
-  }, [signer, contract, isConnected]);
+  }, [provider, chainId, isConnected]);
+
+  // Update contract when chain changes
+  useEffect(() => {
+    if (provider && chainId && isSupportedChain(chainId)) {
+      try {
+        const contractAddress = getContractAddress(chainId);
+        // Use a small delay to ensure provider is ready for the new network
+        const timer = setTimeout(() => {
+          const newContract = new ethers.Contract(
+            contractAddress,
+            abi,
+            provider
+          );
+          setContract(newContract);
+          console.log(
+            "Contract updated for chain:",
+            chainId,
+            "address:",
+            contractAddress
+          );
+        }, 100);
+
+        return () => clearTimeout(timer);
+      } catch (error) {
+        console.error("Error creating contract:", error);
+        setContract(null);
+      }
+    } else {
+      setContract(null);
+      setBalance("0"); // Reset balance when contract is not available
+      setAmount("0");
+    }
+  }, [provider, chainId]);
+
+  // Fetch balance when contract or signer changes
+  useEffect(() => {
+    if (contract && signer?.address && isCurrentChainSupported) {
+      console.log(
+        "Fetching balance for address:",
+        signer.address,
+        "on chain:",
+        chainId
+      );
+      // Add a small delay to ensure the contract is ready
+      const timer = setTimeout(() => {
+        fetchBalance();
+      }, 200);
+
+      return () => clearTimeout(timer);
+    } else {
+      setBalance("0");
+      setAmount("0");
+    }
+  }, [
+    contract,
+    signer?.address,
+    isCurrentChainSupported,
+    chainId,
+    fetchBalance,
+  ]);
+
+  // Get signer when provider is available and user is connected
+  useEffect(() => {
+    async function getSigner() {
+      if (provider && isConnected) {
+        try {
+          const signer = await provider.getSigner();
+          setSigner(signer);
+        } catch (error) {
+          console.error("Error getting signer:", error);
+        }
+      }
+    }
+
+    getSigner();
+  }, [provider, isConnected]);
 
   const connectWallet = async () => {
     if (window.ethereum) {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      setProvider(provider);
+      try {
+        // Request account access
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        setProvider(provider);
+
+        const signer = await provider.getSigner();
+        setSigner(signer);
+
+        // Get network info
+        const network = await provider.getNetwork();
+        setChainId(Number(network.chainId));
+
+        toast.success("Wallet connected successfully!");
+      } catch (error) {
+        console.error("Error connecting wallet:", error);
+        toast.error("Failed to connect wallet");
+      }
+    } else {
+      toast.error("MetaMask not found. Please install MetaMask.");
     }
   };
 
   const submitBridgeOut = async () => {
+    if (!isCurrentChainSupported) {
+      toast.error("Please switch to a supported network");
+      return;
+    }
+
+    if (!amount || amount === "0") {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    if (parseFloat(amount) > parseFloat(balance)) {
+      toast.error("Insufficient balance");
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (!contract || !signer) throw new Error("Contract or signer not ready");
 
       const contractWithSigner = contract.connect(signer) as any;
       const bridgeAmount = ethers.parseUnits(amount, 18);
+
+      toast.info("Initiating bridge transaction...");
+
       const tx = await contractWithSigner.bridgeOut(
         bridgeAmount,
         signer.address,
         chainId
       );
+
       if (tx == null) {
         throw new Error("Transaction not submitted");
       }
+
+      toast.info(
+        `Transaction submitted: ${tx.hash}. Waiting for confirmation...`
+      );
 
       // Wait for the transaction to be mined
       const receipt = await tx.wait();
 
       // Access the raw logs from the receipt
       const rawLogs = receipt.logs;
+      const contractAddress = getContractAddress(chainId!);
 
-      // Parse and decode the logs using the contract interface
+      // Parse and decode the logs using the fresh contract interface
       const events = rawLogs
         // Filter logs emitted by your contract (optional but recommended)
         .filter(
@@ -109,7 +363,7 @@ function BridgeOut() {
         .map((log) => {
           try {
             // Parse the log to get the event object
-            return contract.interface.parseLog(log);
+            return freshContract.interface.parseLog(log);
           } catch (error) {
             // If the log is not from your contract's events, ignore it
             return null;
@@ -126,24 +380,30 @@ function BridgeOut() {
         console.log(`Event ${event.name} emitted with args:`, event.args);
       });
 
-      toast(`Submitted Signature: ${tx.hash}`);
+      toast.success(`Bridge transaction completed! Hash: ${tx.hash}`);
 
-      const balance = await contract.balanceOf(signer?.address);
-      setBalance(ethers.formatEther(balance));
+      // Refresh balance after successful transaction
+      await fetchBalance();
       setAmount("0");
     } catch (e: any) {
-      console.error(e);
-      toast(e.message);
+      console.error("Bridge transaction error:", e);
+
+      // More specific error handling
+      if (e.code === 4001) {
+        toast.error("Transaction rejected by user");
+      } else if (e.code === -32603) {
+        toast.error("Internal JSON-RPC error. Please try again.");
+      } else if (e.message?.includes("insufficient funds")) {
+        toast.error("Insufficient funds for transaction");
+      } else if (e.message?.includes("gas")) {
+        toast.error("Gas estimation failed. Please try again.");
+      } else {
+        toast.error(e.message || "Transaction failed");
+      }
     } finally {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (provider) {
-      provider.getSigner().then(setSigner);
-    }
-  }, [provider]);
 
   function onAmountChange(e: any) {
     const value = e.target.value;
@@ -155,6 +415,12 @@ function BridgeOut() {
   const formatAddress = (addr: string) => {
     if (!addr) return "";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  const setMaxAmount = () => {
+    if (balance && parseFloat(balance) > 0) {
+      setAmount(balance);
+    }
   };
 
   return (
@@ -254,15 +520,19 @@ function BridgeOut() {
 
           {/* Connection Status */}
           <div style={{ marginBottom: "1.5rem" }}>
-            {isConnected ? (
+            {isConnected || signer ? (
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "1rem",
-                  background: "rgba(34, 197, 94, 0.1)",
-                  border: "1px solid rgba(34, 197, 94, 0.2)",
+                  background: isCurrentChainSupported
+                    ? "rgba(34, 197, 94, 0.1)"
+                    : "rgba(239, 68, 68, 0.1)",
+                  border: isCurrentChainSupported
+                    ? "1px solid rgba(34, 197, 94, 0.2)"
+                    : "1px solid rgba(239, 68, 68, 0.2)",
                   borderRadius: "0.75rem",
                 }}
               >
@@ -277,7 +547,9 @@ function BridgeOut() {
                     style={{
                       width: "1.25rem",
                       height: "1.25rem",
-                      background: "#22c55e",
+                      background: isCurrentChainSupported
+                        ? "#22c55e"
+                        : "#ef4444",
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
@@ -286,18 +558,20 @@ function BridgeOut() {
                       color: "white",
                     }}
                   >
-                    ✓
+                    {isCurrentChainSupported ? "✓" : "!"}
                   </div>
                   <div>
                     <p
                       style={{
-                        color: "#22c55e",
+                        color: isCurrentChainSupported ? "#22c55e" : "#ef4444",
                         fontSize: "0.875rem",
                         fontWeight: "500",
                         margin: 0,
                       }}
                     >
-                      Wallet Connected
+                      {isCurrentChainSupported
+                        ? "Ready to Bridge"
+                        : "Network Not Supported"}
                     </p>
                     <p
                       style={{
@@ -306,164 +580,77 @@ function BridgeOut() {
                         margin: 0,
                       }}
                     >
+                      {chainId ? getChainName(chainId) : "Unknown"} •{" "}
                       {formatAddress(signer?.address)}
                     </p>
                   </div>
                 </div>
-                <div
-                  style={{
-                    width: "1.25rem",
-                    height: "1.25rem",
-                    background: "#22c55e",
-                    borderRadius: "0.25rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "0.7rem",
-                    color: "white",
-                  }}
-                >
-                  💳
-                </div>
               </div>
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "1rem",
-                  background: "rgba(251, 146, 60, 0.1)",
-                  border: "1px solid rgba(251, 146, 60, 0.2)",
-                  borderRadius: "0.75rem",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "1.25rem",
-                      height: "1.25rem",
-                      background: "#fb923c",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "0.7rem",
-                      color: "white",
-                    }}
-                  >
-                    !
-                  </div>
-                  <p
-                    style={{
-                      color: "#fb923c",
-                      fontSize: "0.875rem",
-                      fontWeight: "500",
-                      margin: 0,
-                    }}
-                  >
-                    {provider ? "Wallet Ready" : "Need to Connect Wallet"}
-                  </p>
-                </div>
-              </div>
+              <div></div>
+              // <div
+              //   style={{
+              //     display: "flex",
+              //     alignItems: "center",
+              //     justifyContent: "space-between",
+              //     padding: "1rem",
+              //     background: "rgba(251, 146, 60, 0.1)",
+              //     border: "1px solid rgba(251, 146, 60, 0.2)",
+              //     borderRadius: "0.75rem",
+              //   }}
+              // >
+              //   <div
+              //     style={{
+              //       display: "flex",
+              //       alignItems: "center",
+              //       gap: "0.75rem",
+              //     }}
+              //   >
+              //     <div
+              //       style={{
+              //         width: "1.25rem",
+              //         height: "1.25rem",
+              //         background: "#fb923c",
+              //         borderRadius: "50%",
+              //         display: "flex",
+              //         alignItems: "center",
+              //         justifyContent: "center",
+              //         fontSize: "0.7rem",
+              //         color: "white",
+              //       }}
+              //     >
+              //       !
+              //     </div>
+              //     <p
+              //       style={{
+              //         color: "#fb923c",
+              //         fontSize: "0.875rem",
+              //         fontWeight: "500",
+              //         margin: 0,
+              //       }}
+              //     >
+              //       Supported Networks
+              //     </p>
+              //   </div>
+              // </div>
             )}
           </div>
 
-          {/* Chain ID Display */}
-          {/* {chainId && (
-            <div style={{
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '0.75rem'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Network Chain ID</span>
-                <span style={{ color: 'white', fontWeight: '600' }}>{chainId}</span>
-              </div>
-            </div>
-          )} */}
-
-          {/* Form Fields */}
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
-          >
-            {/* Target Address */}
+          {/* Form Fields - Only show if on supported network */}
+          {isCurrentChainSupported && isConnected && (
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "0.5rem",
+                gap: "1.5rem",
               }}
             >
-              <label
-                style={{
-                  fontSize: "0.875rem",
-                  fontWeight: "500",
-                  color: "#d1d5db",
-                }}
-              >
-                Destination Address
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type="text"
-                  name="target"
-                  id="target"
-                  placeholder="Target address"
-                  value={signer?.address}
-                  disabled
-                  style={{
-                    width: "100%",
-                    padding: "1rem",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    borderRadius: "0.75rem",
-                    color: "white",
-                    fontSize: "0.875rem",
-                    outline: "none",
-                    opacity: signer?.address ? 1 : 0.6,
-                    transition: "all 0.2s",
-                  }}
-                />
-                {signer?.address && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: "1rem",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      width: "0.5rem",
-                      height: "0.5rem",
-                      background: "#22c55e",
-                      borderRadius: "50%",
-                      animation: "pulse 2s infinite",
-                    }}
-                  ></div>
-                )}
-              </div>
-            </div>
-
-            {/* Amount */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.5rem",
-              }}
-            >
+              {/* Target Address */}
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  flexDirection: "column",
+                  gap: "0.5rem",
                 }}
               >
                 <label
@@ -473,80 +660,175 @@ function BridgeOut() {
                     color: "#d1d5db",
                   }}
                 >
-                  Amount
+                  Destination Address
                 </label>
-                <div
-                  style={{
-                    fontSize: "0.875rem",
-                    fontWeight: "500",
-                    color: "#d1d5db",
-                  }}
-                >
-                  Balance: {balance}
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    name="target"
+                    id="target"
+                    placeholder="Target address"
+                    value={signer?.address || ""}
+                    disabled
+                    style={{
+                      width: "100%",
+                      padding: "1rem",
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "0.75rem",
+                      color: "white",
+                      fontSize: "0.875rem",
+                      outline: "none",
+                      opacity: signer?.address ? 1 : 0.6,
+                      transition: "all 0.2s",
+                    }}
+                  />
+                  {signer?.address && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        right: "1rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: "0.5rem",
+                        height: "0.5rem",
+                        background: "#22c55e",
+                        borderRadius: "50%",
+                        animation: "pulse 2s infinite",
+                      }}
+                    ></div>
+                  )}
                 </div>
               </div>
-              <div style={{ position: "relative" }}>
-                <input
-                  type="text"
-                  name="amount"
-                  id="amount"
-                  placeholder="Amount"
-                  value={amount}
-                  onChange={onAmountChange}
-                  style={{
-                    width: "100%",
-                    padding: "1rem",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    borderRadius: "0.75rem",
-                    color: "white",
-                    fontSize: "1.25rem",
-                    fontWeight: "600",
-                    outline: "none",
-                    transition: "all 0.2s",
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "rgba(168, 85, 247, 0.5)";
-                    e.target.style.boxShadow =
-                      "0 0 0 3px rgba(168, 85, 247, 0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                    e.target.style.boxShadow = "none";
-                  }}
-                />
+
+              {/* Amount */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
                 <div
                   style={{
-                    position: "absolute",
-                    right: "1rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "#9ca3af",
-                    fontWeight: "600",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  LIB
+                  <label
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: "500",
+                      color: "#d1d5db",
+                    }}
+                  >
+                    Amount
+                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      fontSize: "0.875rem",
+                      fontWeight: "500",
+                      color: "#d1d5db",
+                    }}
+                  >
+                    <span>
+                      Balance: {isLoadingBalance ? "Loading..." : balance}
+                    </span>
+                    {parseFloat(balance) > 0 && (
+                      <button
+                        onClick={setMaxAmount}
+                        style={{
+                          background: "rgba(168, 85, 247, 0.2)",
+                          border: "1px solid rgba(168, 85, 247, 0.3)",
+                          borderRadius: "0.25rem",
+                          padding: "0.25rem 0.5rem",
+                          color: "#a855f7",
+                          fontSize: "0.75rem",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background =
+                            "rgba(168, 85, 247, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background =
+                            "rgba(168, 85, 247, 0.2)";
+                        }}
+                      >
+                        MAX
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    name="amount"
+                    id="amount"
+                    placeholder="Amount"
+                    value={amount}
+                    onChange={onAmountChange}
+                    style={{
+                      width: "100%",
+                      padding: "1rem",
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "0.75rem",
+                      color: "white",
+                      fontSize: "1.25rem",
+                      fontWeight: "600",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "rgba(168, 85, 247, 0.5)";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(168, 85, 247, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: "1rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#9ca3af",
+                      fontWeight: "600",
+                    }}
+                  >
+                    LIB
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Submit Button */}
           <button
-            onClick={!isConnected ? connectWallet : submitBridgeOut}
+            onClick={!isConnected && !signer ? connectWallet : submitBridgeOut}
             disabled={
               isLoading ||
-              (isConnected && (amount === "0" || !amount)) ||
-              (isConnected && (balance === "0" || !balance))
+              isLoadingBalance ||
+              ((isConnected || signer) && (amount === "0" || !amount)) ||
+              ((isConnected || signer) && (balance === "0" || !balance))
             }
             style={{
               width: "100%",
-              marginTop: "2rem",
+              marginTop: isConnected || signer ? "2rem" : "0rem",
               padding: "1rem",
-              background: "linear-gradient(to right, #a855f7, #3b82f6)",
-              // background: !isConnected
-              //   ? "linear-gradient(to right, #6b7280, #6b7280)"
-              //   : "linear-gradient(to right, #a855f7, #3b82f6)",
+              background:
+                (isConnected || signer) && !isCurrentChainSupported
+                  ? "linear-gradient(to right, #dc2626, #b91c1c)"
+                  : "linear-gradient(to right, #a855f7, #3b82f6)",
               color: "white",
               fontWeight: "600",
               fontSize: "1rem",
@@ -554,31 +836,46 @@ function BridgeOut() {
               border: "none",
               cursor:
                 isLoading ||
-                (isConnected && (amount === "0" || !amount)) ||
-                (isConnected && (balance === "0" || !balance))
+                isLoadingBalance ||
+                ((isConnected || signer) && (amount === "0" || !amount)) ||
+                ((isConnected || signer) && (balance === "0" || !balance))
                   ? "not-allowed"
                   : "pointer",
               transition: "all 0.2s",
               transform: "scale(1)",
               boxShadow:
                 isLoading ||
-                (isConnected && (amount === "0" || !amount)) ||
-                (isConnected && (balance === "0" || !balance))
+                isLoadingBalance ||
+                ((isConnected || signer) && (amount === "0" || !amount)) ||
+                ((isConnected || signer) && (balance === "0" || !balance))
                   ? "none"
+                  : (isConnected || signer) && !isCurrentChainSupported
+                  ? "0 10px 25px rgba(220, 38, 38, 0.3)"
                   : "0 10px 25px rgba(168, 85, 247, 0.3)",
+              opacity:
+                isLoading ||
+                isLoadingBalance ||
+                ((isConnected || signer) && (amount === "0" || !amount)) ||
+                ((isConnected || signer) && (balance === "0" || !balance))
+                  ? 0.6
+                  : 1,
             }}
             onMouseEnter={(e) => {
               if (!e.currentTarget.disabled) {
                 e.currentTarget.style.transform = "scale(1.02)";
                 e.currentTarget.style.background =
-                  "linear-gradient(to right, #9333ea, #2563eb)";
+                  (isConnected || signer) && !isCurrentChainSupported
+                    ? "linear-gradient(to right, #b91c1c, #991b1b)"
+                    : "linear-gradient(to right, #9333ea, #2563eb)";
               }
             }}
             onMouseLeave={(e) => {
               if (!e.currentTarget.disabled) {
                 e.currentTarget.style.transform = "scale(1)";
                 e.currentTarget.style.background =
-                  "linear-gradient(to right, #a855f7, #3b82f6)";
+                  (isConnected || signer) && !isCurrentChainSupported
+                    ? "linear-gradient(to right, #dc2626, #b91c1c)"
+                    : "linear-gradient(to right, #a855f7, #3b82f6)";
               }
             }}
             onMouseDown={(e) => {
@@ -613,8 +910,12 @@ function BridgeOut() {
                 ></div>
                 <span>Processing...</span>
               </div>
-            ) : !isConnected ? (
+            ) : isLoadingBalance ? (
+              "Loading Balance..."
+            ) : !isConnected && !signer ? (
               "Connect Wallet"
+            ) : !isCurrentChainSupported ? (
+              "Switch to Supported Network"
             ) : (
               "Bridge Tokens"
             )}
