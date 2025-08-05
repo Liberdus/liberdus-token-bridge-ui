@@ -1202,84 +1202,72 @@ function BridgeTransactions() {
                             </span>
 
                             {/* Add tooltip icon for failed transactions */}
-                            {tx.status === TransactionStatus.FAILED &&
-                              tx.reason && (
+                            {tx.status === TransactionStatus.FAILED && (
+                              <div
+                                style={{
+                                  position: "relative",
+                                  display: "inline-block",
+                                }}
+                                onMouseEnter={(e) =>
+                                  handleTooltipShow(tx.txId, e)
+                                }
+                                onMouseLeave={handleTooltipHide}
+                              >
                                 <div
                                   style={{
-                                    position: "relative",
-                                    display: "inline-block",
+                                    fontSize: "0.75rem",
+                                    color: "#ef4444",
+                                    cursor: "help",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: "1.5rem",
+                                    height: "1.5rem",
+                                    borderRadius: "50%",
+                                    background: "rgba(239, 68, 68, 0.1)",
+                                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                                    transition:
+                                      "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                    backdropFilter: "blur(10px)",
+                                    boxShadow:
+                                      "0 4px 12px rgba(239, 68, 68, 0.2)",
                                   }}
-                                  onMouseEnter={(e) =>
-                                    handleTooltipShow(tx.txId, e)
-                                  }
-                                  onMouseLeave={handleTooltipHide}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background =
+                                      "rgba(239, 68, 68, 0.2)";
+                                    e.currentTarget.style.transform =
+                                      "scale(1.1)";
+                                    e.currentTarget.style.boxShadow =
+                                      "0 6px 20px rgba(239, 68, 68, 0.3)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background =
+                                      "rgba(239, 68, 68, 0.1)";
+                                    e.currentTarget.style.transform =
+                                      "scale(1)";
+                                    e.currentTarget.style.boxShadow =
+                                      "0 4px 12px rgba(239, 68, 68, 0.2)";
+                                  }}
                                 >
-                                  <div
-                                    style={{
-                                      fontSize: "0.75rem",
-                                      color: "#ef4444",
-                                      cursor: "help",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      width: "1.5rem",
-                                      height: "1.5rem",
-                                      borderRadius: "50%",
-                                      background: "rgba(239, 68, 68, 0.1)",
-                                      border:
-                                        "1px solid rgba(239, 68, 68, 0.2)",
-                                      transition:
-                                        "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                      backdropFilter: "blur(10px)",
-                                      boxShadow:
-                                        "0 4px 12px rgba(239, 68, 68, 0.2)",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background =
-                                        "rgba(239, 68, 68, 0.2)";
-                                      e.currentTarget.style.transform =
-                                        "scale(1.1)";
-                                      e.currentTarget.style.boxShadow =
-                                        "0 6px 20px rgba(239, 68, 68, 0.3)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background =
-                                        "rgba(239, 68, 68, 0.1)";
-                                      e.currentTarget.style.transform =
-                                        "scale(1)";
-                                      e.currentTarget.style.boxShadow =
-                                        "0 4px 12px rgba(239, 68, 68, 0.2)";
-                                    }}
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                   >
-                                    <svg
-                                      width="12"
-                                      height="12"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    >
-                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                      <polyline points="14,2 14,8 20,8"></polyline>
-                                      <line
-                                        x1="16"
-                                        y1="13"
-                                        x2="8"
-                                        y2="13"
-                                      ></line>
-                                      <line
-                                        x1="16"
-                                        y1="17"
-                                        x2="8"
-                                        y2="17"
-                                      ></line>
-                                      <polyline points="10,9 9,9 8,9"></polyline>
-                                    </svg>
-                                  </div>
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14,2 14,8 20,8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10,9 9,9 8,9"></polyline>
+                                  </svg>
                                 </div>
-                              )}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td
@@ -1542,8 +1530,8 @@ function BridgeTransactions() {
             >
               {(() => {
                 const tx = transactions.find((t) => t.txId === tooltipVisible);
-                const reason = tx?.reason || "No specific reason provided";
-
+                const { reason, receipt } = tx;
+                if (receipt) return "Check the receipt for failed reason.";
                 return reason
                   .replace(/\\\"/g, '"') // Unescape quotes
                   .replace(/\\n/g, "\n") // Replace escaped newlines
