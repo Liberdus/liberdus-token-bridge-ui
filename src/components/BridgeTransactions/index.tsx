@@ -50,6 +50,7 @@ export function isTransactionStatus(
 }
 
 function BridgeTransactions() {
+  const [totalTransactions, setTotalTransactions] = useState<number>(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ function BridgeTransactions() {
   });
   const [tooltipReady, setTooltipReady] = useState(false);
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchTransactions = async ({
     page = 1,
@@ -86,6 +88,7 @@ function BridgeTransactions() {
     setLoading(true);
     setError(null);
     setTransactions([]);
+    setTotalTransactions(0);
 
     let txURL = `${coordinatorServer}/transaction`;
     if (txId) {
@@ -105,6 +108,7 @@ function BridgeTransactions() {
       const response = await fetch(txURL);
       const data = await response.json();
       setTransactions(data.Ok.transactions);
+      setTotalTransactions(data.Ok.totalTranactions);
       setTotalPages(data.Ok.totalPages);
     } catch (err) {
       setError("Failed to fetch bridge transactions");
@@ -229,7 +233,26 @@ function BridgeTransactions() {
   const clearAllFilters = () => {
     setIsSearchActive(false);
     setSearchQuery("");
+    setPage(1);
     fetchTransactions({ page: 1 });
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+
+    if (isSearchActive && searchQuery.trim()) {
+      // Refresh the current search query
+      const query = searchQuery.toLowerCase().trim();
+      validateSearchQuery(searchType, query, page);
+    } else {
+      // Refresh all transactions
+      await fetchTransactions({ page });
+    }
+
+    // Add a small delay to show the refresh animation
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 500);
   };
 
   // Handle outside clicks
@@ -476,18 +499,118 @@ function BridgeTransactions() {
             zIndex: 49, // Lower than the nav bar
           }}
         >
-          <div style={{ position: "relative" }}>
+          {/* Header with Title, Total Transactions, and Refresh Button */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "0.5rem",
+            }}
+          >
             <label
               style={{
-                display: "block",
                 fontSize: "0.875rem",
                 fontWeight: "500",
                 color: "#d1d5db",
-                marginBottom: "0.5rem",
               }}
             >
               Search Transactions
             </label>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+              }}
+            >
+              {/* Total Transactions Display */}
+              {!isSearchActive && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0.5rem 0.75rem",
+                    background: "rgba(59, 130, 246, 0.1)",
+                    border: "1px solid rgba(59, 130, 246, 0.2)",
+                    borderRadius: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: "400",
+                    color: "#F9FAFB",
+                  }}
+                >
+                  Total Transactions: {totalTransactions.toLocaleString()}
+                </div>
+              )}
+
+              {/* Refresh Button */}
+              <button
+                onClick={handleRefresh}
+                disabled={loading || isRefreshing}
+                style={{
+                  padding: "0.25rem",
+                  background:
+                    loading || isRefreshing
+                      ? "rgba(156, 163, 175, 0.1)"
+                      : "rgba(34, 197, 94, 0.1)",
+                  border:
+                    loading || isRefreshing
+                      ? "1px solid rgba(156, 163, 175, 0.2)"
+                      : "1px solid rgba(34, 197, 94, 0.2)",
+                  borderRadius: "0.5rem",
+                  color: loading || isRefreshing ? "#9ca3af" : "#22c55e",
+                  cursor: loading || isRefreshing ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "2rem",
+                  height: "2rem",
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading && !isRefreshing) {
+                    e.currentTarget.style.background = "rgba(34, 197, 94, 0.2)";
+                    e.currentTarget.style.transform = "scale(1.05)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading && !isRefreshing) {
+                    e.currentTarget.style.background = "rgba(34, 197, 94, 0.1)";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }
+                }}
+                title={
+                  loading || isRefreshing
+                    ? "Refreshing..."
+                    : "Refresh transactions"
+                }
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    animation: isRefreshing
+                      ? "spin 1s linear infinite"
+                      : "none",
+                  }}
+                >
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                  <path d="M3 21v-5h5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div style={{ position: "relative" }}>
             <div
               style={{
                 display: "flex",
@@ -688,7 +811,7 @@ function BridgeTransactions() {
                   ? "Searching for transactions..."
                   : searchError
                   ? `Error: ${searchError}`
-                  : `Found ${transactions.length} transactions`}{" "}
+                  : `Found ${totalTransactions} transactions`}{" "}
                 {searchQuery &&
                   ` • ${currentSearchType?.label}: "${searchQuery}"`}
               </div>
@@ -759,7 +882,10 @@ function BridgeTransactions() {
             </div>
           )}
 
-          {(!loading && !error && !isSearchActive) ||
+          {(!loading &&
+            !error &&
+            !isSearchActive &&
+            transactions.length === 0) ||
             (!loading &&
               !error &&
               isSearchActive &&
@@ -1337,7 +1463,7 @@ function BridgeTransactions() {
               zIndex: 1000,
               boxShadow:
                 "0 25px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)",
-              pointerEvents: "auto", // Changed from "none" to "auto"
+              pointerEvents: "auto",
               opacity: tooltipReady ? 1 : 0,
               transition: "opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
@@ -1467,7 +1593,7 @@ function BridgeTransactions() {
         <div
           style={{
             position: "absolute",
-            top: "7.5rem",
+            top: "8.75rem",
             left: "0rem",
             width: "1rem",
             height: "1rem",
@@ -1479,7 +1605,7 @@ function BridgeTransactions() {
         <div
           style={{
             position: "absolute",
-            top: "7.5rem",
+            top: "8.75rem",
             right: "0rem",
             width: "1rem",
             height: "1rem",
@@ -1505,6 +1631,17 @@ function BridgeTransactions() {
           100% {
             transform: scale(2);
             opacity: 0;
+          }
+        }
+        @keyframes pulse {
+          0%,
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.1);
           }
         }
         @keyframes tooltipFadeIn {
