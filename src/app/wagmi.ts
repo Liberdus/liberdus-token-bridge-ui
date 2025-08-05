@@ -81,6 +81,28 @@ export const networkConfig = {
     "7440f5161ffc77eed9ee91d6fbb406083192d1fe4d7e64b2f0814c0e067dcab4",
 };
 
+// Explorer URL mapping based on chain ID
+export const getExplorerUrl = (chainId: number, txHash: string): string => {
+  const explorers: Record<number, string> = {
+    1: "https://etherscan.io/tx/", // Ethereum Mainnet
+    11155111: "https://sepolia.etherscan.io/tx/", // Ethereum Sepolia
+    137: "https://polygonscan.com/tx/", // Polygon Mainnet
+    80001: "https://mumbai.polygonscan.com/tx/", // Polygon Mumbai (deprecated)
+    80002: "https://amoy.polygonscan.com/tx/", // Polygon Amoy
+    56: "https://bscscan.com/tx/", // BSC Mainnet
+    97: "https://testnet.bscscan.com/tx/", // BSC Testnet
+    31337: "http://127.0.0.1:8545/tx/", // Local development
+  };
+
+  // Default to Liberdus explorer if chain ID not found or if it's a Liberdus transaction
+  const explorerUrl = explorers[chainId];
+  if (!explorerUrl || !txHash.startsWith("0x")) {
+    return `${liberdusExplorer}${txHash}`;
+  }
+
+  return `${explorerUrl}${txHash}`;
+};
+
 // Helper function to get contract address for current chain
 export const getContractAddress = (chainId: number): string => {
   const config = networkConfig.supportedChains[chainId.toString()];
@@ -130,3 +152,4 @@ export const contractAddress =
   networkConfig.supportedChains["80002"].contractAddress;
 export const coordinatorServer = "http://dev.liberdus.com:8000";
 export const bridgeInUsername = "liberdusbridge";
+export const liberdusExplorer = "https://dev.liberdus.com:3035/tx/";

@@ -91,13 +91,12 @@ export default function NavBar({ children }: { children: React.ReactNode }) {
       >
         <div
           style={{
-            maxWidth: "100rem",
+            maxWidth: "80rem",
             margin: "0 auto",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             gap: "2rem",
-            padding: "0 1rem",
           }}
         >
           {/* Left Side - Logo */}

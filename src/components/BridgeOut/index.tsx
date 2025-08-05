@@ -13,6 +13,23 @@ import { abi } from "../../../abi.json";
 import { toast } from "react-toastify";
 import { useAccount } from "wagmi";
 
+// SVG Refresh Icon Component
+const RefreshIcon = ({ size = 12, isLoading = false }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    style={{
+      display: "inline-block",
+      animation: isLoading ? "spin 1s linear infinite" : "none",
+      transition: "transform 0.2s ease",
+    }}
+  >
+    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+  </svg>
+);
+
 function BridgeOut() {
   const { isConnected } = useAccount({
     config: wagmiConfig,
@@ -25,8 +42,29 @@ function BridgeOut() {
   const [isLoading, setIsLoading] = useState(false);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [amountError, setAmountError] = useState<string>("");
 
   const isCurrentChainSupported = chainId ? isSupportedChain(chainId) : false;
+
+  // Validate amount function
+  const validateAmount = useCallback(
+    (value: string) => {
+      setAmountError("");
+
+      if (!value || value === "0" || parseFloat(value) === 0) {
+        setAmountError("Amount must be greater than 0");
+        return false;
+      }
+
+      if (parseFloat(value) > parseFloat(balance)) {
+        setAmountError("Amount exceeds balance");
+        return false;
+      }
+
+      return true;
+    },
+    [balance]
+  );
 
   // Debounced balance fetching function
   const fetchBalance = useCallback(async () => {
@@ -54,6 +92,11 @@ function BridgeOut() {
 
       const balance = await freshContract.balanceOf(signer.address);
       setBalance(ethers.formatEther(balance));
+
+      // Re-validate amount after balance update
+      if (amount && amount !== "0") {
+        validateAmount(amount);
+      }
     } catch (error) {
       console.error("Error getting balance:", error);
       setBalance("0");
@@ -65,7 +108,15 @@ function BridgeOut() {
     } finally {
       setIsLoadingBalance(false);
     }
-  }, [contract, signer?.address, chainId]);
+  }, [contract, signer?.address, chainId, amount, validateAmount]);
+
+  // Manual refresh balance function
+  const refreshBalance = useCallback(async () => {
+    if (!isLoadingBalance) {
+      await fetchBalance();
+      toast.success("Balance refreshed!");
+    }
+  }, [fetchBalance, isLoadingBalance]);
 
   // Initialize provider and check connection status on mount
   useEffect(() => {
@@ -107,6 +158,7 @@ function BridgeOut() {
       setSigner(null);
       setBalance("0"); // Reset balance when disconnected
       setAmount("0");
+      setAmountError("");
       return;
     }
 
@@ -129,6 +181,7 @@ function BridgeOut() {
         if (chainId !== null && chainId !== newChainId) {
           setBalance("0");
           setAmount("0");
+          setAmountError("");
           setContract(null); // Clear old contract immediately
         }
 
@@ -152,6 +205,7 @@ function BridgeOut() {
         // Reset state immediately
         setBalance("0");
         setAmount("0");
+        setAmountError("");
         setContract(null);
         setChainId(chainIdNum);
 
@@ -179,6 +233,7 @@ function BridgeOut() {
           setSigner(null);
           setBalance("0");
           setAmount("0");
+          setAmountError("");
         } else if (provider) {
           // User connected or switched accounts
           try {
@@ -236,6 +291,7 @@ function BridgeOut() {
       setContract(null);
       setBalance("0"); // Reset balance when contract is not available
       setAmount("0");
+      setAmountError("");
     }
   }, [provider, chainId]);
 
@@ -257,6 +313,7 @@ function BridgeOut() {
     } else {
       setBalance("0");
       setAmount("0");
+      setAmountError("");
     }
   }, [
     contract,
@@ -314,13 +371,7 @@ function BridgeOut() {
       return;
     }
 
-    if (!amount || amount === "0") {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-
-    if (parseFloat(amount) > parseFloat(balance)) {
-      toast.error("Insufficient balance");
+    if (!validateAmount(amount)) {
       return;
     }
 
@@ -363,7 +414,7 @@ function BridgeOut() {
         .map((log) => {
           try {
             // Parse the log to get the event object
-            return freshContract.interface.parseLog(log);
+            return contract.interface.parseLog(log);
           } catch (error) {
             // If the log is not from your contract's events, ignore it
             return null;
@@ -385,6 +436,7 @@ function BridgeOut() {
       // Refresh balance after successful transaction
       await fetchBalance();
       setAmount("0");
+      setAmountError("");
     } catch (e: any) {
       console.error("Bridge transaction error:", e);
 
@@ -409,6 +461,14 @@ function BridgeOut() {
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setAmount(value);
+      // Clear error when user starts typing
+      if (amountError) {
+        setAmountError("");
+      }
+      // Validate on change if value is not empty
+      if (value && value !== "0") {
+        validateAmount(value);
+      }
     }
   }
 
@@ -420,6 +480,7 @@ function BridgeOut() {
   const setMaxAmount = () => {
     if (balance && parseFloat(balance) > 0) {
       setAmount(balance);
+      setAmountError("");
     }
   };
 
@@ -739,29 +800,73 @@ function BridgeOut() {
                       Balance: {isLoadingBalance ? "Loading..." : balance}
                     </span>
                     {parseFloat(balance) > 0 && (
-                      <button
-                        onClick={setMaxAmount}
-                        style={{
-                          background: "rgba(168, 85, 247, 0.2)",
-                          border: "1px solid rgba(168, 85, 247, 0.3)",
-                          borderRadius: "0.25rem",
-                          padding: "0.25rem 0.5rem",
-                          color: "#a855f7",
-                          fontSize: "0.75rem",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background =
-                            "rgba(168, 85, 247, 0.3)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background =
-                            "rgba(168, 85, 247, 0.2)";
-                        }}
-                      >
-                        MAX
-                      </button>
+                      <>
+                        <button
+                          onClick={setMaxAmount}
+                          style={{
+                            background: "rgba(168, 85, 247, 0.2)",
+                            border: "1px solid rgba(168, 85, 247, 0.3)",
+                            borderRadius: "0.25rem",
+                            padding: "0.25rem 0.5rem",
+                            color: "#a855f7",
+                            fontSize: "0.75rem",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background =
+                              "rgba(168, 85, 247, 0.3)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background =
+                              "rgba(168, 85, 247, 0.2)";
+                          }}
+                        >
+                          MAX
+                        </button>
+                        <button
+                          onClick={refreshBalance}
+                          disabled={isLoadingBalance}
+                          title={
+                            isLoadingBalance
+                              ? "Refreshing balance..."
+                              : "Refresh balance"
+                          }
+                          style={{
+                            background: "rgba(34, 197, 94, 0.2)",
+                            border: "1px solid rgba(34, 197, 94, 0.3)",
+                            borderRadius: "0.25rem",
+                            padding: "0.25rem 0.5rem",
+                            color: "#22c55e",
+                            fontSize: "0.75rem",
+                            cursor: isLoadingBalance
+                              ? "not-allowed"
+                              : "pointer",
+                            transition: "all 0.2s",
+                            opacity: isLoadingBalance ? 0.6 : 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            minWidth: "2rem",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isLoadingBalance) {
+                              e.currentTarget.style.background =
+                                "rgba(34, 197, 94, 0.3)";
+                              e.currentTarget.style.transform = "scale(1.05)";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isLoadingBalance) {
+                              e.currentTarget.style.background =
+                                "rgba(34, 197, 94, 0.2)";
+                              e.currentTarget.style.transform = "scale(1)";
+                            }
+                          }}
+                        >
+                          <RefreshIcon size={12} isLoading={isLoadingBalance} />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -777,7 +882,9 @@ function BridgeOut() {
                       width: "100%",
                       padding: "1rem",
                       background: "rgba(255, 255, 255, 0.05)",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      border: amountError
+                        ? "1px solid rgba(239, 68, 68, 0.5)"
+                        : "1px solid rgba(255, 255, 255, 0.1)",
                       borderRadius: "0.75rem",
                       color: "white",
                       fontSize: "1.25rem",
@@ -786,13 +893,17 @@ function BridgeOut() {
                       transition: "all 0.2s",
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = "rgba(168, 85, 247, 0.5)";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(168, 85, 247, 0.1)";
+                      if (!amountError) {
+                        e.target.style.borderColor = "rgba(168, 85, 247, 0.5)";
+                        e.target.style.boxShadow =
+                          "0 0 0 3px rgba(168, 85, 247, 0.1)";
+                      }
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                      e.target.style.boxShadow = "none";
+                      if (!amountError) {
+                        e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                        e.target.style.boxShadow = "none";
+                      }
                     }}
                   />
                   <div
@@ -808,6 +919,23 @@ function BridgeOut() {
                     LIB
                   </div>
                 </div>
+                {/* Error message */}
+                {amountError && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "0.875rem",
+                      margin: 0,
+                      paddingLeft: "0.5rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.25rem",
+                    }}
+                  >
+                    {/* <span>⚠️</span> */}
+                    {amountError}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -818,7 +946,8 @@ function BridgeOut() {
             disabled={
               isLoading ||
               isLoadingBalance ||
-              ((isConnected || signer) && (amount === "0" || !amount)) ||
+              ((isConnected || signer) &&
+                (amount === "0" || !amount || !!amountError)) ||
               ((isConnected || signer) && (balance === "0" || !balance))
             }
             style={{
@@ -837,7 +966,8 @@ function BridgeOut() {
               cursor:
                 isLoading ||
                 isLoadingBalance ||
-                ((isConnected || signer) && (amount === "0" || !amount)) ||
+                ((isConnected || signer) &&
+                  (amount === "0" || !amount || amountError)) ||
                 ((isConnected || signer) && (balance === "0" || !balance))
                   ? "not-allowed"
                   : "pointer",
@@ -846,7 +976,8 @@ function BridgeOut() {
               boxShadow:
                 isLoading ||
                 isLoadingBalance ||
-                ((isConnected || signer) && (amount === "0" || !amount)) ||
+                ((isConnected || signer) &&
+                  (amount === "0" || !amount || amountError)) ||
                 ((isConnected || signer) && (balance === "0" || !balance))
                   ? "none"
                   : (isConnected || signer) && !isCurrentChainSupported
@@ -855,7 +986,8 @@ function BridgeOut() {
               opacity:
                 isLoading ||
                 isLoadingBalance ||
-                ((isConnected || signer) && (amount === "0" || !amount)) ||
+                ((isConnected || signer) &&
+                  (amount === "0" || !amount || amountError)) ||
                 ((isConnected || signer) && (balance === "0" || !balance))
                   ? 0.6
                   : 1,

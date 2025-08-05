@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { coordinatorServer } from "@/app/wagmi";
+import { coordinatorServer, getChainName, getExplorerUrl } from "@/app/wagmi";
 import { ethers } from "ethers";
 import { toEthereumAddress } from "@/utils/transformAddress";
 import moment from "moment";
@@ -12,9 +12,10 @@ export interface Transaction {
   value: string;
   type: TransactionType;
   txTimestamp: number;
+  chainId: number;
   status: TransactionStatus;
   receipt: string;
-  reason?: string | null;
+  reason?: string | null; // Optional field for error reason
   createdAt?: string;
   updatedAt?: string;
 }
@@ -61,7 +62,13 @@ function BridgeTransactions() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [tooltipVisible, setTooltipVisible] = useState<string | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [tooltipPosition, setTooltipPosition] = useState({
+    x: 0,
+    y: 0,
+    showBelow: false,
+  });
+  const [tooltipReady, setTooltipReady] = useState(false);
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchTransactions = async ({
     page = 1,
@@ -84,7 +91,7 @@ function BridgeTransactions() {
     if (txId) {
       txURL += `?txId=${txId}`;
     } else if (sender) {
-      txURL += `?senderAddress=${sender}` + `&page=${page}`;
+      txURL += `?sender=${toEthereumAddress(sender)}` + `&page=${page}`;
     } else if (isTransactionType(type)) {
       txURL += `?type=${type}` + `&page=${page}`;
     } else if (isTransactionStatus(status)) {
@@ -106,6 +113,15 @@ function BridgeTransactions() {
       setLoading(false);
     }
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetchTransactions();
@@ -323,16 +339,71 @@ function BridgeTransactions() {
   };
 
   const handleTooltipShow = (txId: string, event: React.MouseEvent) => {
+    // Clear any existing timeout
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+      tooltipTimeoutRef.current = null;
+    }
+
     const rect = event.currentTarget.getBoundingClientRect();
-    setTooltipPosition({
-      x: rect.left + rect.width / 2,
-      y: rect.top - 10,
+    const tooltipWidth = 420; // Increased width for long messages
+    const tooltipMaxHeight = 300; // Maximum height before scrolling
+    const padding = 20; // Padding from window edges
+
+    let x = rect.left + rect.width / 2;
+    let y = rect.top - 10;
+    let showBelow = false;
+
+    // Adjust horizontal position if tooltip would exceed window width
+    if (x + tooltipWidth / 2 > window.innerWidth - padding) {
+      x = window.innerWidth - tooltipWidth / 2 - padding;
+    } else if (x - tooltipWidth / 2 < padding) {
+      x = tooltipWidth / 2 + padding;
+    }
+
+    // Calculate if there's enough space above for the tooltip
+    const spaceAbove = rect.top - padding;
+    const spaceBelow = window.innerHeight - rect.bottom - padding;
+
+    // Show below if there's not enough space above, or if there's more space below
+    if (spaceAbove < tooltipMaxHeight || spaceBelow > spaceAbove) {
+      y = rect.bottom + 10;
+      showBelow = true;
+    }
+
+    // Set position first, then make visible
+    setTooltipPosition({ x, y, showBelow });
+    setTooltipReady(false); // Reset ready state
+
+    // Use requestAnimationFrame to ensure position is set before showing
+    requestAnimationFrame(() => {
+      setTooltipVisible(txId);
+      requestAnimationFrame(() => {
+        setTooltipReady(true);
+      });
     });
-    setTooltipVisible(txId);
   };
 
   const handleTooltipHide = () => {
+    // Add a small delay before hiding to allow mouse to move to tooltip
+    tooltipTimeoutRef.current = setTimeout(() => {
+      setTooltipVisible(null);
+      setTooltipReady(false);
+    }, 300);
+  };
+
+  const handleTooltipMouseEnter = () => {
+    // Clear the hide timeout when mouse enters tooltip
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+      tooltipTimeoutRef.current = null;
+    }
+  };
+
+  const handleTooltipMouseLeave = () => {
+    // Hide immediately when mouse leaves tooltip
     setTooltipVisible(null);
+    setTooltipReady(false);
   };
 
   return (
@@ -782,6 +853,18 @@ function BridgeTransactions() {
                           borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
                         }}
                       >
+                        Chain
+                      </th>
+                      <th
+                        style={{
+                          padding: "1rem",
+                          textAlign: "left",
+                          fontSize: "0.875rem",
+                          fontWeight: "600",
+                          color: "#d1d5db",
+                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                        }}
+                      >
                         Type
                       </th>
                       <th
@@ -823,7 +906,7 @@ function BridgeTransactions() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((tx, index) => (
+                    {transactions.map((tx) => (
                       <tr
                         key={tx.txId}
                         style={{
@@ -845,11 +928,7 @@ function BridgeTransactions() {
                           }}
                         >
                           <a
-                            href={
-                              tx.txId.startsWith("0x")
-                                ? `https://amoy.polygonscan.com/tx/${tx.txId}`
-                                : `https://dev.liberdus.com:3035/tx/${tx.txId}`
-                            }
+                            href={getExplorerUrl(tx.chainId, tx.txId)}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -890,6 +969,32 @@ function BridgeTransactions() {
                           }}
                         >
                           {formatValue(tx.value)}
+                        </td>
+                        <td style={{ padding: "1rem" }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              padding: "0.25rem 0.75rem",
+                              background: "rgba(99, 102, 241, 0.1)",
+                              border: "1px solid rgba(99, 102, 241, 0.2)",
+                              borderRadius: "0.5rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "500",
+                              color: "#6366f1",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: "0.5rem",
+                                height: "0.5rem",
+                                background: "#6366f1",
+                                borderRadius: "50%",
+                              }}
+                            ></div>
+                            <span>{getChainName(tx.chainId)}</span>
+                          </span>
                         </td>
                         <td style={{ padding: "1rem" }}>
                           <span
@@ -1073,11 +1178,7 @@ function BridgeTransactions() {
                             "-"
                           ) : (
                             <a
-                              href={
-                                tx.receipt?.startsWith("0x")
-                                  ? `https://amoy.polygonscan.com/tx/${tx.receipt}`
-                                  : `https://dev.liberdus.com:3035/tx/${tx.receipt}`
-                              }
+                              href={getExplorerUrl(tx.chainId, tx.receipt)}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
@@ -1218,7 +1319,9 @@ function BridgeTransactions() {
               position: "fixed",
               left: `${tooltipPosition.x}px`,
               top: `${tooltipPosition.y}px`,
-              transform: "translateX(-50%) translateY(-100%)",
+              transform: tooltipPosition.showBelow
+                ? "translateX(-50%) translateY(0%)"
+                : "translateX(-50%) translateY(-100%)",
               background:
                 "linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(31, 41, 55, 0.98))",
               backdropFilter: "blur(25px)",
@@ -1227,15 +1330,19 @@ function BridgeTransactions() {
               padding: "1rem 1.25rem",
               fontSize: "0.875rem",
               color: "#ffffff",
-              maxWidth: "320px",
-              minWidth: "200px",
+              maxWidth: "420px",
+              maxHeight: "300px",
               wordWrap: "break-word",
+              overflowWrap: "break-word",
               zIndex: 1000,
               boxShadow:
                 "0 25px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)",
-              pointerEvents: "none",
-              animation: "tooltipFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              pointerEvents: "auto", // Changed from "none" to "auto"
+              opacity: tooltipReady ? 1 : 0,
+              transition: "opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
+            onMouseEnter={handleTooltipMouseEnter}
+            onMouseLeave={handleTooltipMouseLeave}
           >
             {/* Header with icon */}
             <div
@@ -1246,6 +1353,7 @@ function BridgeTransactions() {
                 marginBottom: "0.75rem",
                 paddingBottom: "0.5rem",
                 borderBottom: "1px solid rgba(239, 68, 68, 0.2)",
+                flexShrink: 0,
               }}
             >
               <div
@@ -1257,6 +1365,7 @@ function BridgeTransactions() {
                   height: "1.25rem",
                   borderRadius: "0.25rem",
                   background: "rgba(239, 68, 68, 0.15)",
+                  flexShrink: 0,
                 }}
               >
                 <svg
@@ -1288,17 +1397,33 @@ function BridgeTransactions() {
               </span>
             </div>
 
-            {/* Reason content */}
+            {/* Reason content with scrolling */}
             <div
               style={{
                 color: "#e5e7eb",
                 lineHeight: "1.5",
-                fontSize: "0.875rem",
+                fontSize: "0.8rem",
+                maxHeight: "120px",
+                overflowY: "auto",
+                overflowX: "hidden",
+                wordBreak: "break-word",
+                whiteSpace: "pre-wrap",
+                scrollbarWidth: "thin",
+                scrollbarColor:
+                  "rgba(239, 68, 68, 0.3) rgba(255, 255, 255, 0.1)",
               }}
+              className="custom-scrollbar"
             >
               {(() => {
                 const tx = transactions.find((t) => t.txId === tooltipVisible);
-                return tx?.reason || "No specific reason provided";
+                const reason = tx?.reason || "No specific reason provided";
+
+                return reason
+                  .replace(/\\\"/g, '"') // Unescape quotes
+                  .replace(/\\n/g, "\n") // Replace escaped newlines
+                  .replace(/({|\[)/g, "$1\n  ") // Add newline + indent after { or [
+                  .replace(/(}|])/g, "\n$1") // Add newline before } or ]
+                  .replace(/,(?!\s*[\n}])/g, ",\n  "); // Add newline after commas (except before closing })
               })()}
             </div>
 
@@ -1306,14 +1431,15 @@ function BridgeTransactions() {
             <div
               style={{
                 position: "absolute",
-                bottom: "-6px",
+                [tooltipPosition.showBelow ? "top" : "bottom"]: "-6px",
                 left: "50%",
                 transform: "translateX(-50%)",
                 width: "0",
                 height: "0",
                 borderLeft: "6px solid transparent",
                 borderRight: "6px solid transparent",
-                borderTop: "6px solid rgba(17, 24, 39, 0.98)",
+                [tooltipPosition.showBelow ? "borderBottom" : "borderTop"]:
+                  "6px solid rgba(17, 24, 39, 0.98)",
                 filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))",
               }}
             ></div>
@@ -1396,6 +1522,20 @@ function BridgeTransactions() {
           border-color: rgba(168, 85, 247, 0.3) !important;
           transform: translateY(-2px);
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 2px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(239, 68, 68, 0.3);
+          border-radius: 2px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(239, 68, 68, 0.5);
         }
       `}</style>
     </div>
