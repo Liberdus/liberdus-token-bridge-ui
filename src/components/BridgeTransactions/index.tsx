@@ -72,7 +72,7 @@ function BridgeTransactions() {
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchTransactions = async ({
+  const fetchTransactions = useCallback(async ({
     page = 1,
     txId,
     sender,
@@ -104,7 +104,6 @@ function BridgeTransactions() {
     }
 
     try {
-      // Replace this with your actual API endpoint
       const response = await fetch(txURL);
       const data = await response.json();
       setTransactions(data.Ok.transactions);
@@ -116,7 +115,7 @@ function BridgeTransactions() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -212,7 +211,7 @@ function BridgeTransactions() {
 
       return true; // ✅ passed validation
     },
-    []
+    [fetchTransactions]
   );
 
   useEffect(() => {
@@ -223,7 +222,7 @@ function BridgeTransactions() {
       const isValid = validateSearchQuery(searchType, query, 1);
       setIsSearchActive(true);
       if (isValid) {
-        setSearchError(null);
+        setSearchError("");
       }
     }, 500); // debounce
 
@@ -882,38 +881,31 @@ function BridgeTransactions() {
             </div>
           )}
 
-          {(!loading &&
-            !error &&
-            !isSearchActive &&
-            transactions.length === 0) ||
-            (!loading &&
-              !error &&
-              isSearchActive &&
-              transactions.length === 0 && (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "3rem",
-                    color: "#9ca3af",
-                    fontSize: "1.125rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "3rem",
-                      marginBottom: "1rem",
-                      opacity: 0.5,
-                    }}
-                  >
-                    {isSearchActive ? "🔍" : "📝"}
-                  </div>
-                  <p>
-                    {isSearchActive
-                      ? "No transactions match your search criteria."
-                      : "No bridge transactions found."}
-                  </p>
-                </div>
-              ))}
+          {!loading && !error && transactions.length === 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "3rem",
+                color: "#9ca3af",
+                fontSize: "1.125rem",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "3rem",
+                  marginBottom: "1rem",
+                  opacity: 0.5,
+                }}
+              >
+                {isSearchActive ? "🔍" : "📝"}
+              </div>
+              <p>
+                {isSearchActive
+                  ? "No transactions match your search criteria."
+                  : "No bridge transactions found."}
+              </p>
+            </div>
+          )}
 
           {!loading && !error && transactions.length > 0 && (
             <>
@@ -1288,7 +1280,7 @@ function BridgeTransactions() {
                             borderRadius: "0 0.75rem 0.75rem 0",
                           }}
                         >
-                          {tx.receipt == "" ? (
+                          {!tx.receipt ? (
                             "-"
                           ) : (
                             <a
@@ -1530,9 +1522,10 @@ function BridgeTransactions() {
             >
               {(() => {
                 const tx = transactions.find((t) => t.txId === tooltipVisible);
-                const { reason, receipt } = tx;
-                if (receipt) return "Check the receipt for failed reason.";
-                return reason
+                if (!tx) return "Transaction not found.";
+                if (tx.receipt) return "Check the receipt for failed reason.";
+                if (!tx.reason) return "No failure reason available.";
+                return tx.reason
                   .replace(/\\\"/g, '"') // Unescape quotes
                   .replace(/\\n/g, "\n") // Replace escaped newlines
                   .replace(/({|\[)/g, "$1\n  ") // Add newline + indent after { or [

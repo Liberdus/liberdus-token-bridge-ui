@@ -136,7 +136,7 @@ export enum Mode {
   Production = "production",
 }
 
-const mode = Mode.Development || process.env.Mode;
+const mode = process.env.NEXT_PUBLIC_MODE || Mode.Development;
 export const wagmiConfig = getDefaultConfig({
   appName: "Liberdus Token Bridge",
   projectId: "a456240005ff39a4d2dc51d18ffa4ad9",
