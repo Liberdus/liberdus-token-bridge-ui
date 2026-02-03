@@ -150,7 +150,7 @@ export default function NavBar({ children }: { children: React.ReactNode }) {
                 gap: "0.5rem",
               }}
             >
-              <div
+              {/* <div
                 style={navItemStyle}
                 onClick={() => router.push("/")}
                 onMouseEnter={(e) =>
@@ -161,8 +161,20 @@ export default function NavBar({ children }: { children: React.ReactNode }) {
                 }
               >
                 Bridge Out
-              </div>
+              </div> */}
               <div
+                style={navItemStyle}
+                onClick={() => router.push("/crossChain")}
+                onMouseEnter={(e) =>
+                  Object.assign(e.currentTarget.style, navItemHoverStyle)
+                }
+                onMouseLeave={(e) =>
+                  Object.assign(e.currentTarget.style, navItemStyle)
+                }
+              >
+                Cross Chain
+              </div>
+              {/* <div
                 style={navItemStyle}
                 onClick={() => router.push("/bridgeIn")}
                 onMouseEnter={(e) =>
@@ -173,7 +185,7 @@ export default function NavBar({ children }: { children: React.ReactNode }) {
                 }
               >
                 Bridge In
-              </div>
+              </div> */}
               <div
                 style={navItemStyle}
                 onClick={() => router.push("/bridgeTxns")}
