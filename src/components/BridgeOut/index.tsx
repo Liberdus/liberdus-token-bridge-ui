@@ -1,7 +1,7 @@
 "use client";
 
 import "react-toastify/dist/ReactToastify.css";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import {
   wagmiConfig,
@@ -43,6 +43,7 @@ function BridgeOut() {
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [amountError, setAmountError] = useState<string>("");
+  const amountRef = useRef(amount);
 
   const isCurrentChainSupported = chainId ? isSupportedChain(chainId) : false;
 
@@ -91,24 +92,30 @@ function BridgeOut() {
       );
 
       const balance = await freshContract.balanceOf(signer.address);
-      setBalance(ethers.formatEther(balance));
+      const formatted = ethers.formatEther(balance);
+      setBalance(formatted);
 
       // Re-validate amount after balance update
-      if (amount && amount !== "0") {
-        validateAmount(amount);
+      const currentAmount = amountRef.current;
+      if (currentAmount && currentAmount !== "0") {
+        if (parseFloat(currentAmount) > parseFloat(formatted)) {
+          setAmountError("Amount exceeds balance");
+        } else {
+          setAmountError("");
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting balance:", error);
       setBalance("0");
       setAmount("0");
       // Don't show toast for network change errors
-      if (!error.message?.includes("network changed")) {
+      if (!error?.message?.includes("network changed")) {
         toast.error("Failed to fetch balance");
       }
     } finally {
       setIsLoadingBalance(false);
     }
-  }, [contract, signer?.address, chainId, amount, validateAmount]);
+  }, [contract, signer?.address, chainId]);
 
   // Manual refresh balance function
   const refreshBalance = useCallback(async () => {
@@ -461,6 +468,7 @@ function BridgeOut() {
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setAmount(value);
+      amountRef.current = value;
       // Clear error when user starts typing
       if (amountError) {
         setAmountError("");
@@ -480,6 +488,7 @@ function BridgeOut() {
   const setMaxAmount = () => {
     if (balance && parseFloat(balance) > 0) {
       setAmount(balance);
+      amountRef.current = balance;
       setAmountError("");
     }
   };
