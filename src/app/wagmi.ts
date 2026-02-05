@@ -46,6 +46,7 @@ export const networkConfig = {
         gasLimit: 200000,
         gasPriceTiers: [50, 100, 150, 200, 250, 300],
       },
+      supportsBridgeChainId: false,
     },
     "11155111": {
       name: "Ethereum Sepolia",
@@ -60,6 +61,7 @@ export const networkConfig = {
         gasLimit: 200000,
         gasPriceTiers: [10, 20, 30, 40, 50, 60],
       },
+      supportsBridgeChainId: false,
     },
     "97": {
       name: "BSC Testnet",
@@ -74,6 +76,7 @@ export const networkConfig = {
         gasLimit: 200000,
         gasPriceTiers: [5, 10, 15, 20, 25, 30],
       },
+      supportsBridgeChainId: true,
     },
   },
   defaultChain: 80002,
@@ -128,6 +131,13 @@ export const getChainName = (chainId: number): string => {
   if (!chainId) return "Unsupported Network";
   const config = networkConfig.supportedChains[chainId.toString()];
   return config?.name || "Unsupported Network";
+};
+
+// Helper function to check if chain supports destination chain ID in bridgeOut
+export const supportsBridgeChainId = (chainId: number): boolean => {
+  if (!chainId) return false;
+  const config = networkConfig.supportedChains[chainId.toString()];
+  return config?.supportsBridgeChainId ?? false;
 };
 
 // Add enum for mode

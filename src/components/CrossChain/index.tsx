@@ -9,8 +9,10 @@ import {
   isSupportedChain,
   getChainName,
   getSupportedChainIds,
+  supportsBridgeChainId,
 } from "@/app/wagmi";
-import { abi } from "../../../abi.json";
+import { abi as LiberdusABI } from "../../utils/abis/Liberdus.json";
+import { abi as LiberdusSecondaryABI } from "../../utils/abis/LiberdusSecondary.json";
 import { toast } from "react-toastify";
 import { useAccount, useSwitchChain } from "wagmi";
 
@@ -386,10 +388,11 @@ function CrossChain() {
     setIsLoadingBalance(true);
     try {
       const contractAddress = getContractAddress(chainId);
+      const contractAbi = supportsBridgeChainId(chainId) ? LiberdusSecondaryABI : LiberdusABI;
       const freshProvider = new ethers.BrowserProvider(window.ethereum);
       const freshContract = new ethers.Contract(
         contractAddress,
-        abi,
+        contractAbi,
         freshProvider
       );
 
@@ -559,10 +562,11 @@ function CrossChain() {
     if (provider && chainId && isSupportedChain(chainId)) {
       try {
         const contractAddress = getContractAddress(chainId);
+        const contractAbi = supportsBridgeChainId(chainId) ? LiberdusSecondaryABI : LiberdusABI;
         const timer = setTimeout(() => {
           const newContract = new ethers.Contract(
             contractAddress,
-            abi,
+            contractAbi,
             provider
           );
           setContract(newContract);
@@ -652,6 +656,11 @@ function CrossChain() {
       return;
     }
 
+    if (!toChainId) {
+      toast.error("Please select a destination chain");
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (!contract || !signer) throw new Error("Contract or signer not ready");
@@ -659,13 +668,21 @@ function CrossChain() {
       const contractWithSigner = contract.connect(signer) as any;
       const bridgeAmount = ethers.parseUnits(amount, 18);
 
-      toast.info("Initiating bridge transaction...");
+      toast.info("Initiating cross-chain bridge transaction...");
 
-      const tx = await contractWithSigner.bridgeOut(
-        bridgeAmount,
-        signer.address,
-        chainId
-      );
+      // Check if this chain's contract supports destinationChainId parameter
+      const tx = supportsBridgeChainId(chainId!)
+        ? await contractWithSigner.bridgeOut(
+            bridgeAmount,
+            signer.address,
+            chainId,
+            toChainId
+          )
+        : await contractWithSigner.bridgeOut(
+            bridgeAmount,
+            signer.address,
+            chainId
+          );
 
       if (tx == null) {
         throw new Error("Transaction not submitted");

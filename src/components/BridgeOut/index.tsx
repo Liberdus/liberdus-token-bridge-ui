@@ -9,7 +9,7 @@ import {
   isSupportedChain,
   getChainName,
 } from "@/app/wagmi";
-import { abi } from "../../../abi.json";
+import { abi } from "../../utils/abis/Liberdus.json";
 import { toast } from "react-toastify";
 import { useAccount } from "wagmi";
 
