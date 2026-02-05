@@ -14,7 +14,7 @@ export interface Transaction {
   txTimestamp: number;
   chainId: number;
   status: TransactionStatus;
-  receipt: string;
+  receiptId: string;
   reason?: string | null; // Optional field for error reason
   createdAt?: string;
   updatedAt?: string;
@@ -1280,11 +1280,11 @@ function BridgeTransactions() {
                             borderRadius: "0 0.75rem 0.75rem 0",
                           }}
                         >
-                          {!tx.receipt ? (
+                          {!tx.receiptId ? (
                             "-"
                           ) : (
                             <a
-                              href={getExplorerUrl(tx.chainId, tx.receipt)}
+                              href={getExplorerUrl(tx.chainId, tx.receiptId)}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
@@ -1302,7 +1302,7 @@ function BridgeTransactions() {
                                 (e.currentTarget.style.color = "#a855f7")
                               }
                             >
-                              <span>{formatAddress(tx.receipt)}</span>
+                              <span>{formatAddress(tx.receiptId)}</span>
                               <span style={{ fontSize: "0.75rem" }}>↗</span>
                             </a>
                           )}
@@ -1523,7 +1523,7 @@ function BridgeTransactions() {
               {(() => {
                 const tx = transactions.find((t) => t.txId === tooltipVisible);
                 if (!tx) return "Transaction not found.";
-                if (tx.receipt) return "Check the receipt for failed reason.";
+                if (!tx.reason && tx.receiptId) return "Check the receipt for failed reason.";
                 if (!tx.reason) return "No failure reason available.";
                 return tx.reason
                   .replace(/\\\"/g, '"') // Unescape quotes
