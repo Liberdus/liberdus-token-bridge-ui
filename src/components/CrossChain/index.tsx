@@ -636,18 +636,16 @@ function CrossChain() {
       toast.info("Initiating cross-chain bridge transaction...");
 
       // Check if this chain's contract supports destinationChainId parameter
-      const tx = supportsBridgeChainId(chainId!)
-        ? await contractWithSigner.bridgeOut(
-            bridgeAmount,
-            signer.address,
-            chainId,
-            toChainId
-          )
-        : await contractWithSigner.bridgeOut(
-            bridgeAmount,
-            signer.address,
-            chainId
-          );
+      const useDestinationParam = supportsBridgeChainId(chainId!);
+      const bridgeOutFn = useDestinationParam
+        ? contractWithSigner[
+            "bridgeOut(uint256,address,uint256,uint256)"
+          ]
+        : contractWithSigner["bridgeOut(uint256,address,uint256)"];
+
+      const tx = useDestinationParam
+        ? await bridgeOutFn(bridgeAmount, signer.address, chainId, toChainId)
+        : await bridgeOutFn(bridgeAmount, signer.address, chainId);
 
       if (tx == null) {
         throw new Error("Transaction not submitted");
