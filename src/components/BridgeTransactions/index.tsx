@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { coordinatorServer, getChainName, getExplorerUrl } from "@/app/wagmi";
+import { coordinatorServer, getChainName, getExplorerUrl, LIBERDUS_CHAIN_ID } from "@/app/wagmi";
 import { ethers } from "ethers";
 import { toEthereumAddress } from "@/utils/transformAddress";
 import moment from "moment";
@@ -13,6 +13,7 @@ export interface Transaction {
   type: TransactionType;
   txTimestamp: number;
   chainId: number;
+  bridgeChainId: number; // The chain on the other side of the bridge (Default: LIBERDUS_CHAIN_ID)
   status: TransactionStatus;
   receiptId: string;
   reason?: string | null; // Optional field for error reason
@@ -30,11 +31,14 @@ export enum TransactionStatus {
 export enum TransactionType {
   BRIDGE_IN = 0, // COIN to TOKEN
   BRIDGE_OUT = 1, // TOKEN to COIN
+  BRIDGE_CROSS = 2, // TOKEN to TOKEN (EVM cross-chain)
 }
 
 export function isTransactionType(value: unknown): value is TransactionType {
   return (
-    value === TransactionType.BRIDGE_IN || value === TransactionType.BRIDGE_OUT
+    value === TransactionType.BRIDGE_IN ||
+    value === TransactionType.BRIDGE_OUT ||
+    value === TransactionType.BRIDGE_CROSS
   );
 }
 
@@ -145,7 +149,7 @@ function BridgeTransactions() {
       value: "type",
       label: "Bridge Type",
       placeholder:
-        "Enter bridge transaction type... ( in: bridge in, out: bridge out )",
+        "Enter bridge type... ( in: bridge in, out: bridge out, cross: cross chain )",
     },
     {
       value: "status",
@@ -182,14 +186,16 @@ function BridgeTransactions() {
           break;
 
         case "type":
-          if (query !== "in" && query !== "out") {
-            setSearchError("Invalid bridge type. Use 'in' or 'out'.");
+          if (query !== "in" && query !== "out" && query !== "cross") {
+            setSearchError("Invalid bridge type. Use 'in', 'out', or 'cross'.");
             return false;
           }
           fetchTransactions({
             type:
               query === "in"
                 ? TransactionType.BRIDGE_IN
+                : query === "cross"
+                ? TransactionType.BRIDGE_CROSS
                 : TransactionType.BRIDGE_OUT,
             page,
           });
@@ -270,6 +276,24 @@ function BridgeTransactions() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isDropdownOpen]);
+
+  const getBridgeChainName = (chainId: number): string => {
+    if (chainId === LIBERDUS_CHAIN_ID) return "Liberdus Network";
+    return getChainName(chainId);
+  };
+
+  const getChainColor = (chainId: number): string => {
+    const chainColors: Record<number, string> = {
+      [LIBERDUS_CHAIN_ID]: "#f59e0b", // amber — Liberdus Network
+      80002: "#a855f7",               // purple — Polygon Amoy
+      137: "#a855f7",                 // purple — Polygon Mainnet
+      11155111: "#818cf8",            // indigo — Ethereum Sepolia
+      1: "#818cf8",                   // indigo — Ethereum Mainnet
+      97: "#facc15",                  // yellow — BSC Testnet
+      56: "#facc15",                  // yellow — BSC Mainnet
+    };
+    return chainColors[chainId] || "#9ca3af";
+  };
 
   const formatValue = (value: string) => {
     // Convert wei to ETH for display
@@ -1093,7 +1117,7 @@ function BridgeTransactions() {
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
-                              gap: "0.5rem",
+                              gap: "0.375rem",
                               padding: "0.25rem 0.75rem",
                               background: "rgba(99, 102, 241, 0.1)",
                               border: "1px solid rgba(99, 102, 241, 0.2)",
@@ -1101,6 +1125,7 @@ function BridgeTransactions() {
                               fontSize: "0.75rem",
                               fontWeight: "500",
                               color: "#6366f1",
+                              whiteSpace: "nowrap",
                             }}
                           >
                             <div
@@ -1109,9 +1134,12 @@ function BridgeTransactions() {
                                 height: "0.5rem",
                                 background: "#6366f1",
                                 borderRadius: "50%",
+                                flexShrink: 0,
                               }}
                             ></div>
-                            <span>{getChainName(tx.chainId)}</span>
+                            <span style={{ color: getChainColor(tx.chainId) }}>{getChainName(tx.chainId)}</span>
+                            <span style={{ color: "#9ca3af" }}>→</span>
+                            <span style={{ color: getChainColor(tx.bridgeChainId) }}>{getBridgeChainName(tx.bridgeChainId)}</span>
                           </span>
                         </td>
                         <td style={{ padding: "1rem" }}>
@@ -1124,10 +1152,14 @@ function BridgeTransactions() {
                               background:
                                 tx.type === TransactionType.BRIDGE_IN
                                   ? "rgba(34, 197, 94, 0.1)"
+                                  : tx.type === TransactionType.BRIDGE_CROSS
+                                  ? "rgba(168, 85, 247, 0.1)"
                                   : "rgba(59, 130, 246, 0.1)",
                               border:
                                 tx.type === TransactionType.BRIDGE_IN
                                   ? "1px solid rgba(34, 197, 94, 0.2)"
+                                  : tx.type === TransactionType.BRIDGE_CROSS
+                                  ? "1px solid rgba(168, 85, 247, 0.2)"
                                   : "1px solid rgba(59, 130, 246, 0.2)",
                               borderRadius: "0.5rem",
                               fontSize: "0.75rem",
@@ -1135,17 +1167,23 @@ function BridgeTransactions() {
                               color:
                                 tx.type === TransactionType.BRIDGE_IN
                                   ? "#22c55e"
+                                  : tx.type === TransactionType.BRIDGE_CROSS
+                                  ? "#a855f7"
                                   : "#3b82f6",
                             }}
                           >
                             <span>
                               {tx.type === TransactionType.BRIDGE_IN
                                 ? "←"
+                                : tx.type === TransactionType.BRIDGE_CROSS
+                                ? "⇄"
                                 : "→"}
                             </span>
                             <span>
                               {tx.type === TransactionType.BRIDGE_IN
                                 ? "Bridge In"
+                                : tx.type === TransactionType.BRIDGE_CROSS
+                                ? "Cross Chain"
                                 : "Bridge Out"}
                             </span>
                           </span>
@@ -1284,7 +1322,7 @@ function BridgeTransactions() {
                             "-"
                           ) : (
                             <a
-                              href={getExplorerUrl(tx.chainId, tx.receiptId)}
+                              href={getExplorerUrl(tx.bridgeChainId, tx.receiptId)}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{

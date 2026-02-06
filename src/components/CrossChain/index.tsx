@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import {
   wagmiConfig,
+  networkConfig,
   getContractAddress,
   isSupportedChain,
   getChainName,
@@ -282,23 +283,10 @@ function CrossChain() {
 
   // Cross-chain specific state
   const supportedIds = getSupportedChainIds();
-  const [fromChainId, setFromChainId] = useState<number | null>(null);
-  const [toChainId, setToChainId] = useState<number | null>(null);
+  const [fromChainId, setFromChainId] = useState<number | null>(networkConfig.defaultChain);
+  const [toChainId, setToChainId] = useState<number | null>(networkConfig.secondaryChain);
 
   const isCurrentChainSupported = chainId ? isSupportedChain(chainId) : false;
-
-  // Initialize from/to chains based on wallet's connected chain
-  useEffect(() => {
-    if (chainId && isSupportedChain(chainId)) {
-      if (fromChainId === null) {
-        setFromChainId(chainId);
-        const otherChains = supportedIds.filter((id) => id !== chainId);
-        if (otherChains.length > 0 && toChainId === null) {
-          setToChainId(otherChains[0]);
-        }
-      }
-    }
-  }, [chainId, fromChainId, toChainId, supportedIds]);
 
   // Sync fromChainId when wallet chain changes externally
   useEffect(() => {

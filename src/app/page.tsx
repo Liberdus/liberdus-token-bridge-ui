@@ -1,7 +1,7 @@
 "use client";
 
-import { BridgeOut } from "@/components/BridgeOut";
+import { CrossChain } from "@/components/CrossChain";
 
 export default function HomePage() {
-  return <BridgeOut />;
+  return <CrossChain />;
 }

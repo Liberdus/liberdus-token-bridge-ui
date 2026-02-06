@@ -80,6 +80,7 @@ export const networkConfig = {
     },
   },
   defaultChain: 80002,
+  secondaryChain: 97, // It would be LIBERDUS_CHAIN_ID when Liberdus Mainnet is live
   liberdusNetworkId:
     "7440f5161ffc77eed9ee91d6fbb406083192d1fe4d7e64b2f0814c0e067dcab4",
 };
@@ -140,6 +141,9 @@ export const supportsBridgeChainId = (chainId: number): boolean => {
   return config?.supportsBridgeChainId ?? false;
 };
 
+// Liberdus network chain ID (matches DEFAULT_CHAIN_ID in the token contract)
+export const LIBERDUS_CHAIN_ID = 0
+
 // Add enum for mode
 export enum Mode {
   Development = "development",
@@ -160,6 +164,6 @@ export const wagmiConfig = getDefaultConfig({
 // Legacy exports for backward compatibility
 export const contractAddress =
   networkConfig.supportedChains["80002"].contractAddress;
-export const coordinatorServer = "http://dev.liberdus.com:8000";
+// export const coordinatorServer = "http://dev.liberdus.com:8000";
 export const bridgeInUsername = "liberdusbridge";
 export const liberdusExplorer = "https://dev.liberdus.com:3035/tx/";
