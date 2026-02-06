@@ -12,6 +12,7 @@ import {
 import { abi } from "../../utils/abis/Liberdus.json";
 import { toast } from "react-toastify";
 import { useAccount } from "wagmi";
+import { colors } from "@/theme/colors";
 
 // SVG Refresh Icon Component
 const RefreshIcon = ({ size = 12, isLoading = false }) => (
@@ -539,12 +540,11 @@ function BridgeOut() {
         {/* Main Card */}
         <div
           style={{
-            backdropFilter: "blur(20px)",
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: colors.background.card,
+            border: `1px solid ${colors.border.subtle}`,
             borderRadius: "1.5rem",
             padding: "2rem",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            boxShadow: colors.shadows.card,
           }}
         >
           {/* Header */}
@@ -556,10 +556,10 @@ function BridgeOut() {
                 justifyContent: "center",
                 width: "4rem",
                 height: "4rem",
-                background: "linear-gradient(45deg, #a855f7, #3b82f6)",
+                background: colors.gradients.purple,
                 borderRadius: "1rem",
                 marginBottom: "1rem",
-                boxShadow: "0 10px 25px rgba(168, 85, 247, 0.3)",
+                boxShadow: colors.shadows.buttonPurple,
                 fontSize: "2rem",
                 fontWeight: "bold",
               }}
@@ -570,7 +570,7 @@ function BridgeOut() {
               style={{
                 fontSize: "1.875rem",
                 fontWeight: "bold",
-                background: "linear-gradient(to right, #ffffff, #d1d5db)",
+                background: colors.gradients.purple,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 marginBottom: "0.5rem",
@@ -580,7 +580,7 @@ function BridgeOut() {
             </h1>
             <p
               style={{
-                color: "#9ca3af",
+                color: colors.text.muted,
                 fontSize: "0.875rem",
               }}
             >
@@ -625,7 +625,7 @@ function BridgeOut() {
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: "0.7rem",
-                      color: "white",
+                      color: colors.text.primary,
                     }}
                   >
                     {isCurrentChainSupported ? "✓" : "!"}
@@ -645,7 +645,7 @@ function BridgeOut() {
                     </p>
                     <p
                       style={{
-                        color: "#9ca3af",
+                        color: colors.text.muted,
                         fontSize: "0.75rem",
                         margin: 0,
                       }}
@@ -727,7 +727,7 @@ function BridgeOut() {
                   style={{
                     fontSize: "0.875rem",
                     fontWeight: "500",
-                    color: "#d1d5db",
+                    color: colors.text.secondary,
                   }}
                 >
                   Destination Address
@@ -743,10 +743,10 @@ function BridgeOut() {
                     style={{
                       width: "100%",
                       padding: "1rem",
-                      background: "rgba(255, 255, 255, 0.05)",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      background: colors.background.input,
+                      border: `1px solid ${colors.border.subtle}`,
                       borderRadius: "0.75rem",
-                      color: "white",
+                      color: colors.text.primary,
                       fontSize: "0.875rem",
                       outline: "none",
                       opacity: signer?.address ? 1 : 0.6,
@@ -790,7 +790,7 @@ function BridgeOut() {
                     style={{
                       fontSize: "0.875rem",
                       fontWeight: "500",
-                      color: "#d1d5db",
+                      color: colors.text.secondary,
                     }}
                   >
                     Amount
@@ -802,7 +802,7 @@ function BridgeOut() {
                       gap: "0.5rem",
                       fontSize: "0.875rem",
                       fontWeight: "500",
-                      color: "#d1d5db",
+                      color: colors.text.secondary,
                     }}
                   >
                     <span>
@@ -813,22 +813,22 @@ function BridgeOut() {
                         <button
                           onClick={setMaxAmount}
                           style={{
-                            background: "rgba(168, 85, 247, 0.2)",
-                            border: "1px solid rgba(168, 85, 247, 0.3)",
+                            background: colors.primary.bg,
+                            border: `1px solid ${colors.primary.border}`,
                             borderRadius: "0.25rem",
                             padding: "0.25rem 0.5rem",
-                            color: "#a855f7",
+                            color: colors.primary.light,
                             fontSize: "0.75rem",
                             cursor: "pointer",
                             transition: "all 0.2s",
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.background =
-                              "rgba(168, 85, 247, 0.3)";
+                              colors.primary.bgHover;
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.background =
-                              "rgba(168, 85, 247, 0.2)";
+                              colors.primary.bg;
                           }}
                         >
                           MAX
@@ -895,7 +895,7 @@ function BridgeOut() {
                         ? "1px solid rgba(239, 68, 68, 0.5)"
                         : "1px solid rgba(255, 255, 255, 0.1)",
                       borderRadius: "0.75rem",
-                      color: "white",
+                      color: colors.text.primary,
                       fontSize: "1.25rem",
                       fontWeight: "600",
                       outline: "none",
@@ -903,14 +903,14 @@ function BridgeOut() {
                     }}
                     onFocus={(e) => {
                       if (!amountError) {
-                        e.target.style.borderColor = "rgba(168, 85, 247, 0.5)";
+                        e.target.style.borderColor = colors.border.focus;
                         e.target.style.boxShadow =
-                          "0 0 0 3px rgba(168, 85, 247, 0.1)";
+                          `0 0 0 3px ${colors.border.focusRing}`;
                       }
                     }}
                     onBlur={(e) => {
                       if (!amountError) {
-                        e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                        e.target.style.borderColor = colors.border.subtle;
                         e.target.style.boxShadow = "none";
                       }
                     }}
@@ -921,7 +921,7 @@ function BridgeOut() {
                       right: "1rem",
                       top: "50%",
                       transform: "translateY(-50%)",
-                      color: "#9ca3af",
+                      color: colors.text.muted,
                       fontWeight: "600",
                     }}
                   >
@@ -965,9 +965,9 @@ function BridgeOut() {
               padding: "1rem",
               background:
                 (isConnected || signer) && !isCurrentChainSupported
-                  ? "linear-gradient(to right, #dc2626, #b91c1c)"
-                  : "linear-gradient(to right, #a855f7, #3b82f6)",
-              color: "white",
+                  ? colors.gradients.error
+                  : colors.gradients.purple,
+              color: colors.text.inverse,
               fontWeight: "600",
               fontSize: "1rem",
               borderRadius: "0.75rem",
@@ -991,7 +991,7 @@ function BridgeOut() {
                   ? "none"
                   : (isConnected || signer) && !isCurrentChainSupported
                   ? "0 10px 25px rgba(220, 38, 38, 0.3)"
-                  : "0 10px 25px rgba(168, 85, 247, 0.3)",
+                  : colors.shadows.buttonPurple,
               opacity:
                 isLoading ||
                 isLoadingBalance ||
@@ -1006,8 +1006,8 @@ function BridgeOut() {
                 e.currentTarget.style.transform = "scale(1.02)";
                 e.currentTarget.style.background =
                   (isConnected || signer) && !isCurrentChainSupported
-                    ? "linear-gradient(to right, #b91c1c, #991b1b)"
-                    : "linear-gradient(to right, #9333ea, #2563eb)";
+                    ? colors.gradients.errorHover
+                    : colors.gradients.purpleHover;
               }
             }}
             onMouseLeave={(e) => {
@@ -1015,8 +1015,8 @@ function BridgeOut() {
                 e.currentTarget.style.transform = "scale(1)";
                 e.currentTarget.style.background =
                   (isConnected || signer) && !isCurrentChainSupported
-                    ? "linear-gradient(to right, #dc2626, #b91c1c)"
-                    : "linear-gradient(to right, #a855f7, #3b82f6)";
+                    ? colors.gradients.error
+                    : colors.gradients.purple;
               }
             }}
             onMouseDown={(e) => {
@@ -1067,7 +1067,7 @@ function BridgeOut() {
             <p
               style={{
                 fontSize: "0.75rem",
-                color: "#6b7280",
+                color: colors.text.muted,
                 marginBottom: "0.5rem",
               }}
             >
@@ -1080,14 +1080,14 @@ function BridgeOut() {
                 justifyContent: "center",
                 gap: "1rem",
                 fontSize: "0.75rem",
-                color: "#9ca3af",
+                color: colors.text.muted,
               }}
             >
               <button
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#9ca3af",
+                  color: colors.text.muted,
                   cursor: "pointer",
                   fontSize: "0.75rem",
                   display: "flex",
@@ -1095,8 +1095,8 @@ function BridgeOut() {
                   gap: "0.25rem",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#a855f7")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary.main)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = colors.text.muted)}
               >
                 <span>View on Explorer</span>
                 <span>↗</span>
@@ -1106,13 +1106,13 @@ function BridgeOut() {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#9ca3af",
+                  color: colors.text.muted,
                   cursor: "pointer",
                   fontSize: "0.75rem",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#a855f7")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary.main)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = colors.text.muted)}
               >
                 <span>Learn more</span>
                 <span>↗</span>
@@ -1129,7 +1129,7 @@ function BridgeOut() {
             left: "-0.5rem",
             width: "1rem",
             height: "1rem",
-            background: "rgba(168, 85, 247, 0.3)",
+            background: colors.decorative.dotLeft,
             borderRadius: "50%",
             animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
           }}
@@ -1141,7 +1141,7 @@ function BridgeOut() {
             right: "-0.5rem",
             width: "1rem",
             height: "1rem",
-            background: "rgba(59, 130, 246, 0.3)",
+            background: colors.decorative.dotRight,
             borderRadius: "50%",
             animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
             animationDelay: "1s",

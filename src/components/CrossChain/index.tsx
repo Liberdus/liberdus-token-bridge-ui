@@ -16,6 +16,8 @@ import { abi as LiberdusABI } from "../../utils/abis/Liberdus.json";
 import { abi as LiberdusSecondaryABI } from "../../utils/abis/LiberdusSecondary.json";
 import { toast } from "react-toastify";
 import { useAccount, useSwitchChain } from "wagmi";
+import { colors } from "@/theme/colors";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 // SVG Refresh Icon Component
 const RefreshIcon = ({ size = 12, isLoading = false }: { size?: number; isLoading?: boolean }) => (
@@ -79,7 +81,7 @@ function ChainSelector({
       <p
         style={{
           fontSize: "0.75rem",
-          color: "#9ca3af",
+          color: colors.text.muted,
           margin: "0 0 0.5rem 0",
           fontWeight: "500",
         }}
@@ -93,8 +95,8 @@ function ChainSelector({
             alignItems: "center",
             gap: "0.625rem",
             padding: "0.625rem 0.875rem",
-            background: "rgba(255, 255, 255, 0.06)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: colors.background.input,
+            border: `1px solid ${colors.border.subtle}`,
             borderRadius: "0.75rem",
             cursor: disabled ? "not-allowed" : "pointer",
             transition: "all 0.2s ease",
@@ -105,14 +107,14 @@ function ChainSelector({
           }}
           onMouseEnter={(e) => {
             if (!disabled) {
-              e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.3)";
-              e.currentTarget.style.background = "rgba(255, 255, 255, 0.09)";
+              e.currentTarget.style.borderColor = colors.border.focus;
+              e.currentTarget.style.background = colors.background.hover;
             }
           }}
           onMouseLeave={(e) => {
             if (!disabled) {
-              e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-              e.currentTarget.style.background = "rgba(255, 255, 255, 0.06)";
+              e.currentTarget.style.borderColor = colors.border.subtle;
+              e.currentTarget.style.background = colors.background.input;
             }
           }}
         >
@@ -121,8 +123,8 @@ function ChainSelector({
               width: "1.5rem",
               height: "1.5rem",
               background: selectedChainId
-                ? "linear-gradient(135deg, #a855f7, #3b82f6)"
-                : "rgba(107, 114, 128, 0.3)",
+                ? colors.gradients.primary
+                : colors.text.muted,
               borderRadius: "50%",
               display: "flex",
               alignItems: "center",
@@ -137,7 +139,7 @@ function ChainSelector({
           </div>
           <span
             style={{
-              color: "#ffffff",
+              color: colors.text.primary,
               fontSize: "0.875rem",
               fontWeight: "500",
               flex: 1,
@@ -150,7 +152,7 @@ function ChainSelector({
           </span>
           <span
             style={{
-              color: "#9ca3af",
+              color: colors.text.muted,
               fontSize: "0.625rem",
               transition: "transform 0.2s ease",
               transform: showDropdown ? "rotate(180deg)" : "rotate(0deg)",
@@ -168,11 +170,10 @@ function ChainSelector({
               top: "calc(100% + 0.5rem)",
               left: "0",
               right: "0",
-              background: "rgba(15, 23, 42, 0.95)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
+              background: colors.background.card,
+              border: `1px solid ${colors.border.subtle}`,
               borderRadius: "0.75rem",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+              boxShadow: colors.shadows.xl,
               zIndex: 100,
               padding: "0.5rem",
               minWidth: "100%",
@@ -188,14 +189,14 @@ function ChainSelector({
                   padding: "0.75rem",
                   background:
                     selectedChainId === cId
-                      ? "rgba(168, 85, 247, 0.2)"
+                      ? colors.action.selected
                       : "transparent",
                   borderRadius: "0.5rem",
                   cursor: selectedChainId === cId ? "default" : "pointer",
                   transition: "all 0.2s ease",
                   border:
                     selectedChainId === cId
-                      ? "1px solid rgba(168, 85, 247, 0.3)"
+                      ? `1px solid ${colors.primary.border}`
                       : "1px solid transparent",
                 }}
                 onClick={(e) => {
@@ -207,7 +208,7 @@ function ChainSelector({
                 }}
                 onMouseEnter={(e) => {
                   if (cId !== selectedChainId) {
-                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+                    e.currentTarget.style.background = colors.action.hover;
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -222,8 +223,8 @@ function ChainSelector({
                     height: "1.5rem",
                     background:
                       selectedChainId === cId
-                        ? "linear-gradient(45deg, #a855f7, #3b82f6)"
-                        : "rgba(107, 114, 128, 0.3)",
+                        ? colors.gradients.primary
+                        : colors.text.muted,
                     borderRadius: "50%",
                     display: "flex",
                     alignItems: "center",
@@ -238,7 +239,7 @@ function ChainSelector({
                 </div>
                 <span
                   style={{
-                    color: selectedChainId === cId ? "#a855f7" : "#d1d5db",
+                    color: selectedChainId === cId ? colors.primary.light : colors.text.secondary,
                     fontSize: "0.875rem",
                     fontWeight: selectedChainId === cId ? "600" : "500",
                   }}
@@ -249,7 +250,7 @@ function ChainSelector({
                   <span
                     style={{
                       marginLeft: "auto",
-                      color: "#a855f7",
+                      color: colors.primary.light,
                       fontSize: "0.75rem",
                     }}
                   >
@@ -610,30 +611,6 @@ function CrossChain() {
     getSigner();
   }, [provider, isConnected]);
 
-  const connectWallet = async () => {
-    if (window.ethereum) {
-      try {
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        setProvider(provider);
-
-        const signer = await provider.getSigner();
-        setSigner(signer);
-
-        const network = await provider.getNetwork();
-        setChainId(Number(network.chainId));
-
-        toast.success("Wallet connected successfully!");
-      } catch (error) {
-        console.error("Error connecting wallet:", error);
-        toast.error("Failed to connect wallet");
-      }
-    } else {
-      toast.error("MetaMask not found. Please install MetaMask.");
-    }
-  };
-
   const submitBridgeOut = async () => {
     if (!isCurrentChainSupported) {
       toast.error("Please switch to a supported network");
@@ -778,13 +755,11 @@ function CrossChain() {
         {/* Main Card */}
         <div
           style={{
-            backdropFilter: "blur(24px)",
-            background: "rgba(255, 255, 255, 0.04)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
+            background: colors.background.card,
+            border: `1px solid ${colors.border.subtle}`,
             borderRadius: "1.25rem",
             padding: "1.75rem",
-            boxShadow:
-              "0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+            boxShadow: colors.shadows.card,
           }}
         >
           {/* Header */}
@@ -793,7 +768,7 @@ function CrossChain() {
               style={{
                 fontSize: "1.5rem",
                 fontWeight: "bold",
-                background: "linear-gradient(to right, #ffffff, #d1d5db)",
+                background: colors.gradients.primary,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 marginBottom: "0.375rem",
@@ -804,7 +779,7 @@ function CrossChain() {
             </h1>
             <p
               style={{
-                color: "#9ca3af",
+                color: colors.text.muted,
                 fontSize: "0.8125rem",
                 margin: 0,
               }}
@@ -841,10 +816,10 @@ function CrossChain() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "rgba(168, 85, 247, 0.1)",
-                border: "1px solid rgba(168, 85, 247, 0.2)",
+                background: colors.primary.bg,
+                border: `1px solid ${colors.primary.border}`,
                 borderRadius: "50%",
-                color: "#a855f7",
+                color: colors.primary.main,
                 cursor:
                   !fromChainId || !toChainId || (!isConnected && !signer)
                     ? "not-allowed"
@@ -859,16 +834,16 @@ function CrossChain() {
               }}
               onMouseEnter={(e) => {
                 if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)";
+                  e.currentTarget.style.background = colors.primary.bgHover;
                   e.currentTarget.style.transform = "rotate(180deg)";
-                  e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.4)";
+                  e.currentTarget.style.borderColor = colors.border.focus;
                 }
               }}
               onMouseLeave={(e) => {
                 if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.background = "rgba(168, 85, 247, 0.1)";
+                  e.currentTarget.style.background = colors.primary.bg;
                   e.currentTarget.style.transform = "rotate(0deg)";
-                  e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.2)";
+                  e.currentTarget.style.borderColor = colors.primary.border;
                 }
               }}
             >
@@ -906,7 +881,7 @@ function CrossChain() {
                   style={{
                     fontSize: "0.875rem",
                     fontWeight: "500",
-                    color: "#d1d5db",
+                    color: colors.text.secondary,
                   }}
                 >
                   You Send
@@ -918,7 +893,7 @@ function CrossChain() {
                     gap: "0.5rem",
                     fontSize: "0.875rem",
                     fontWeight: "500",
-                    color: "#d1d5db",
+                    color: colors.text.secondary,
                   }}
                 >
                   <span>
@@ -929,22 +904,22 @@ function CrossChain() {
                       <button
                         onClick={setMaxAmount}
                         style={{
-                          background: "rgba(168, 85, 247, 0.2)",
-                          border: "1px solid rgba(168, 85, 247, 0.3)",
+                          background: colors.primary.bg,
+                          border: `1px solid ${colors.primary.border}`,
                           borderRadius: "0.25rem",
                           padding: "0.25rem 0.5rem",
-                          color: "#a855f7",
+                          color: colors.primary.light,
                           fontSize: "0.75rem",
                           cursor: "pointer",
                           transition: "all 0.2s",
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.background =
-                            "rgba(168, 85, 247, 0.3)";
+                            colors.primary.bgHover;
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background =
-                            "rgba(168, 85, 247, 0.2)";
+                            colors.primary.bg;
                         }}
                       >
                         MAX
@@ -958,11 +933,11 @@ function CrossChain() {
                             : "Refresh balance"
                         }
                         style={{
-                          background: "rgba(34, 197, 94, 0.2)",
-                          border: "1px solid rgba(34, 197, 94, 0.3)",
+                          background: colors.status.successBg,
+                          border: `1px solid ${colors.status.successBorder}`,
                           borderRadius: "0.25rem",
                           padding: "0.25rem 0.5rem",
-                          color: "#22c55e",
+                          color: colors.status.success,
                           fontSize: "0.75rem",
                           cursor: isLoadingBalance
                             ? "not-allowed"
@@ -977,14 +952,14 @@ function CrossChain() {
                         onMouseEnter={(e) => {
                           if (!isLoadingBalance) {
                             e.currentTarget.style.background =
-                              "rgba(34, 197, 94, 0.3)";
+                              colors.status.successBorder;
                             e.currentTarget.style.transform = "scale(1.05)";
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (!isLoadingBalance) {
                             e.currentTarget.style.background =
-                              "rgba(34, 197, 94, 0.2)";
+                              colors.status.successBg;
                             e.currentTarget.style.transform = "scale(1)";
                           }
                         }}
@@ -1006,12 +981,12 @@ function CrossChain() {
                   style={{
                     width: "100%",
                     padding: "1rem",
-                    background: "rgba(255, 255, 255, 0.05)",
+                    background: colors.background.input,
                     border: amountError
-                      ? "1px solid rgba(239, 68, 68, 0.5)"
-                      : "1px solid rgba(255, 255, 255, 0.1)",
+                      ? `1px solid ${colors.status.error}`
+                      : `1px solid ${colors.border.subtle}`,
                     borderRadius: "0.75rem",
-                    color: "white",
+                    color: colors.text.primary,
                     fontSize: "1.25rem",
                     fontWeight: "600",
                     outline: "none",
@@ -1019,14 +994,14 @@ function CrossChain() {
                   }}
                   onFocus={(e) => {
                     if (!amountError) {
-                      e.target.style.borderColor = "rgba(168, 85, 247, 0.5)";
+                      e.target.style.borderColor = colors.border.focus;
                       e.target.style.boxShadow =
-                        "0 0 0 3px rgba(168, 85, 247, 0.1)";
+                        `0 0 0 3px ${colors.border.focusRing}`;
                     }
                   }}
                   onBlur={(e) => {
                     if (!amountError) {
-                      e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      e.target.style.borderColor = colors.border.subtle;
                       e.target.style.boxShadow = "none";
                     }
                   }}
@@ -1037,7 +1012,7 @@ function CrossChain() {
                     right: "1rem",
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "#9ca3af",
+                    color: colors.text.muted,
                     fontWeight: "600",
                   }}
                 >
@@ -1048,7 +1023,7 @@ function CrossChain() {
               {amountError && (
                 <p
                   style={{
-                    color: "#ef4444",
+                    color: colors.status.error,
                     fontSize: "0.875rem",
                     margin: 0,
                     paddingLeft: "0.5rem",
@@ -1064,111 +1039,145 @@ function CrossChain() {
           )}
 
           {/* Submit Button */}
-          <button
-            onClick={!isConnected && !signer ? connectWallet : submitBridgeOut}
-            disabled={
-              (isConnected || !!signer) &&
-              (isButtonDisabled || !isCurrentChainSupported)
-            }
-            style={{
-              width: "100%",
-              padding: "1rem",
-              background:
-                (isConnected || signer) && !isCurrentChainSupported
-                  ? "linear-gradient(to right, #dc2626, #b91c1c)"
-                  : "linear-gradient(to right, #a855f7, #3b82f6)",
-              color: "white",
-              fontWeight: "600",
-              fontSize: "1rem",
-              borderRadius: "0.75rem",
-              border: "none",
-              cursor:
-                (isConnected || !!signer) &&
-                (isButtonDisabled || !isCurrentChainSupported)
-                  ? "not-allowed"
-                  : "pointer",
-              transition: "all 0.2s",
-              transform: "scale(1)",
-              boxShadow:
-                (isConnected || !!signer) &&
-                (isButtonDisabled || !isCurrentChainSupported)
-                  ? "none"
-                  : (isConnected || signer) && !isCurrentChainSupported
-                  ? "0 10px 25px rgba(220, 38, 38, 0.3)"
-                  : "0 10px 25px rgba(168, 85, 247, 0.3)",
-              opacity:
-                (isConnected || !!signer) &&
-                (isButtonDisabled || !isCurrentChainSupported)
-                  ? 0.6
-                  : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (!e.currentTarget.disabled) {
-                e.currentTarget.style.transform = "scale(1.02)";
-                e.currentTarget.style.background =
-                  (isConnected || signer) && !isCurrentChainSupported
-                    ? "linear-gradient(to right, #b91c1c, #991b1b)"
-                    : "linear-gradient(to right, #9333ea, #2563eb)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!e.currentTarget.disabled) {
-                e.currentTarget.style.transform = "scale(1)";
-                e.currentTarget.style.background =
-                  (isConnected || signer) && !isCurrentChainSupported
-                    ? "linear-gradient(to right, #dc2626, #b91c1c)"
-                    : "linear-gradient(to right, #a855f7, #3b82f6)";
-              }
-            }}
-            onMouseDown={(e) => {
-              if (!e.currentTarget.disabled) {
-                e.currentTarget.style.transform = "scale(0.98)";
-              }
-            }}
-            onMouseUp={(e) => {
-              if (!e.currentTarget.disabled) {
-                e.currentTarget.style.transform = "scale(1.02)";
-              }
-            }}
-          >
-            {isLoading ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                }}
-              >
+          <ConnectButton.Custom>
+            {({
+              account,
+              chain,
+              openConnectModal,
+              authenticationStatus,
+              mounted,
+            }) => {
+              const ready = mounted && authenticationStatus !== "loading";
+              const connected =
+                ready &&
+                account &&
+                chain &&
+                (!authenticationStatus ||
+                  authenticationStatus === "authenticated");
+
+              return (
                 <div
                   style={{
-                    width: "1.25rem",
-                    height: "1.25rem",
-                    border: "2px solid rgba(255, 255, 255, 0.3)",
-                    borderTop: "2px solid white",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
+                    width: "100%",
                   }}
-                ></div>
-                <span>Processing...</span>
-              </div>
-            ) : isLoadingBalance ? (
-              "Loading Balance..."
-            ) : !isConnected && !signer ? (
-              "Connect Wallet"
-            ) : !isCurrentChainSupported ? (
-              "Switch to Supported Network"
-            ) : (
-              "Send"
-            )}
-          </button>
+                  {...(!ready && {
+                    "aria-hidden": true,
+                    style: {
+                      opacity: 0,
+                      pointerEvents: "none",
+                      userSelect: "none",
+                    },
+                  })}
+                >
+                  <button
+                    onClick={!connected ? openConnectModal : submitBridgeOut}
+                    disabled={
+                      connected &&
+                      (isButtonDisabled || !isCurrentChainSupported)
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "1rem",
+                      background:
+                        connected && !isCurrentChainSupported
+                          ? colors.gradients.error
+                          : colors.gradients.primary,
+                      color: colors.text.inverse,
+                      fontWeight: "600",
+                      fontSize: "1rem",
+                      borderRadius: "0.75rem",
+                      border: "none",
+                      cursor:
+                        connected &&
+                        (isButtonDisabled || !isCurrentChainSupported)
+                          ? "not-allowed"
+                          : "pointer",
+                      transition: "all 0.2s",
+                      transform: "scale(1)",
+                      boxShadow:
+                        connected &&
+                        (isButtonDisabled || !isCurrentChainSupported)
+                          ? "none"
+                          : connected && !isCurrentChainSupported
+                          ? "0 10px 25px rgba(220, 38, 38, 0.3)"
+                          : colors.shadows.button,
+                      opacity:
+                        connected &&
+                        (isButtonDisabled || !isCurrentChainSupported)
+                          ? 0.6
+                          : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.transform = "scale(1.02)";
+                        e.currentTarget.style.background =
+                          connected && !isCurrentChainSupported
+                            ? colors.gradients.errorHover
+                            : colors.gradients.primaryHover;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.background =
+                          connected && !isCurrentChainSupported
+                            ? colors.gradients.error
+                            : colors.gradients.primary;
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.transform = "scale(0.98)";
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.transform = "scale(1.02)";
+                      }
+                    }}
+                  >
+                    {isLoading ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "1.25rem",
+                            height: "1.25rem",
+                            border: "2px solid rgba(255, 255, 255, 0.3)",
+                            borderTop: "2px solid white",
+                            borderRadius: "50%",
+                            animation: "spin 1s linear infinite",
+                          }}
+                        ></div>
+                        <span>Processing...</span>
+                      </div>
+                    ) : isLoadingBalance ? (
+                      "Loading Balance..."
+                    ) : !connected ? (
+                      "Connect Wallet"
+                    ) : !isCurrentChainSupported ? (
+                      "Switch to Supported Network"
+                    ) : (
+                      "Send"
+                    )}
+                  </button>
+                </div>
+              );
+            }}
+          </ConnectButton.Custom>
 
           {/* Footer Info */}
           <div style={{ marginTop: "1.25rem", textAlign: "center" }}>
             <p
               style={{
                 fontSize: "0.75rem",
-                color: "#4b5563",
+                color: colors.text.muted,
                 margin: 0,
               }}
             >
@@ -1185,7 +1194,7 @@ function CrossChain() {
             left: "-0.5rem",
             width: "1rem",
             height: "1rem",
-            background: "rgba(168, 85, 247, 0.3)",
+            background: colors.decorative.dotLeft,
             borderRadius: "50%",
             animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
           }}
@@ -1197,7 +1206,7 @@ function CrossChain() {
             right: "-0.5rem",
             width: "1rem",
             height: "1rem",
-            background: "rgba(59, 130, 246, 0.3)",
+            background: colors.decorative.dotRight,
             borderRadius: "50%",
             animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
             animationDelay: "1s",

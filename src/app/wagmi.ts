@@ -142,7 +142,7 @@ export const supportsBridgeChainId = (chainId: number): boolean => {
 };
 
 // Liberdus network chain ID (matches DEFAULT_CHAIN_ID in the token contract)
-export const LIBERDUS_CHAIN_ID = 0
+export const LIBERDUS_CHAIN_ID = 0;
 
 // Add enum for mode
 export enum Mode {
@@ -164,6 +164,6 @@ export const wagmiConfig = getDefaultConfig({
 // Legacy exports for backward compatibility
 export const contractAddress =
   networkConfig.supportedChains["80002"].contractAddress;
-// export const coordinatorServer = "http://dev.liberdus.com:8000";
+export const coordinatorServer = "http://dev.liberdus.com:8000";
 export const bridgeInUsername = "liberdusbridge";
 export const liberdusExplorer = "https://dev.liberdus.com:3035/tx/";

@@ -1,6 +1,7 @@
 "use client";
 
 import { bridgeInUsername } from "@/app/wagmi";
+import { colors } from "@/theme/colors";
 
 function BridgeIn() {
   return (
@@ -23,12 +24,11 @@ function BridgeIn() {
         {/* Main Card */}
         <div
           style={{
-            backdropFilter: "blur(20px)",
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: colors.background.card,
+            border: `1px solid ${colors.border.subtle}`,
             borderRadius: "1.5rem",
             padding: "2rem",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            boxShadow: colors.shadows.card,
           }}
         >
           {/* Header */}
@@ -40,10 +40,10 @@ function BridgeIn() {
                 justifyContent: "center",
                 width: "4rem",
                 height: "4rem",
-                background: "linear-gradient(45deg, #3b82f6, #a855f7)",
+                background: colors.gradients.purpleReverse,
                 borderRadius: "1rem",
                 marginBottom: "1rem",
-                boxShadow: "0 10px 25px rgba(59, 130, 246, 0.3)",
+                boxShadow: colors.shadows.buttonPurple,
                 fontSize: "2rem",
                 fontWeight: "bold",
               }}
@@ -54,7 +54,7 @@ function BridgeIn() {
               style={{
                 fontSize: "1.875rem",
                 fontWeight: "bold",
-                background: "linear-gradient(to right, #ffffff, #d1d5db)",
+                background: colors.gradients.purpleReverse,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 marginBottom: "0.5rem",
@@ -64,7 +64,7 @@ function BridgeIn() {
             </h1>
             <p
               style={{
-                color: "#9ca3af",
+                color: colors.text.muted,
                 fontSize: "0.875rem",
               }}
             >
@@ -83,8 +83,8 @@ function BridgeIn() {
           >
             <div
               style={{
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                background: colors.background.input,
+                border: `1px solid ${colors.border.subtle}`,
                 borderRadius: "0.75rem",
                 padding: "1.5rem",
               }}
@@ -93,7 +93,7 @@ function BridgeIn() {
                 style={{
                   fontSize: "1.125rem",
                   fontWeight: "600",
-                  color: "white",
+                  color: colors.text.primary,
                   marginBottom: "1rem",
                 }}
               >
@@ -101,7 +101,7 @@ function BridgeIn() {
               </h3>
               <p
                 style={{
-                  color: "#d1d5db",
+                  color: colors.text.secondary,
                   fontSize: "0.875rem",
                   lineHeight: "1.5",
                   marginBottom: "1rem",
@@ -113,7 +113,7 @@ function BridgeIn() {
 
               <ol
                 style={{
-                  color: "#d1d5db",
+                  color: colors.text.secondary,
                   fontSize: "0.875rem",
                   paddingLeft: "1.25rem",
                   margin: "0",
@@ -150,7 +150,7 @@ function BridgeIn() {
 
               <p
                 style={{
-                  color: "#9ca3af",
+                  color: colors.text.muted,
                   fontSize: "0.75rem",
                   fontStyle: "italic",
                   marginTop: "1rem",
@@ -167,7 +167,7 @@ function BridgeIn() {
             <p
               style={{
                 fontSize: "0.75rem",
-                color: "#6b7280",
+                color: colors.text.muted,
                 marginBottom: "0.5rem",
               }}
             >
@@ -187,7 +187,7 @@ function BridgeIn() {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#9ca3af",
+                  color: colors.text.muted,
                   cursor: "pointer",
                   fontSize: "0.75rem",
                   display: "flex",
@@ -195,8 +195,8 @@ function BridgeIn() {
                   gap: "0.25rem",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#3b82f6")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary.main)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = colors.text.muted)}
               >
                 <span>Liberdus Website</span>
                 <span>↗</span>
@@ -206,13 +206,13 @@ function BridgeIn() {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#9ca3af",
+                  color: colors.text.muted,
                   cursor: "pointer",
                   fontSize: "0.75rem",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#3b82f6")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary.main)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = colors.text.muted)}
               >
                 <span>Support Page</span>
                 <span>↗</span>
@@ -229,7 +229,7 @@ function BridgeIn() {
             right: "-0.5rem",
             width: "1rem",
             height: "1rem",
-            background: "rgba(59, 130, 246, 0.3)",
+            background: colors.decorative.dotRight,
             borderRadius: "50%",
             animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
           }}
@@ -241,7 +241,7 @@ function BridgeIn() {
             left: "-0.5rem",
             width: "1rem",
             height: "1rem",
-            background: "rgba(168, 85, 247, 0.3)",
+            background: colors.decorative.dotLeft,
             borderRadius: "50%",
             animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
             animationDelay: "1s",

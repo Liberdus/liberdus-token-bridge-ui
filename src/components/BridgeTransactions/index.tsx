@@ -5,6 +5,7 @@ import { coordinatorServer, getChainName, getExplorerUrl, LIBERDUS_CHAIN_ID } fr
 import { ethers } from "ethers";
 import { toEthereumAddress } from "@/utils/transformAddress";
 import moment from "moment";
+import { colors } from "@/theme/colors";
 
 export interface Transaction {
   txId: string;
@@ -284,15 +285,15 @@ function BridgeTransactions() {
 
   const getChainColor = (chainId: number): string => {
     const chainColors: Record<number, string> = {
-      [LIBERDUS_CHAIN_ID]: "#f59e0b", // amber — Liberdus Network
-      80002: "#a855f7",               // purple — Polygon Amoy
-      137: "#a855f7",                 // purple — Polygon Mainnet
-      11155111: "#818cf8",            // indigo — Ethereum Sepolia
-      1: "#818cf8",                   // indigo — Ethereum Mainnet
-      97: "#facc15",                  // yellow — BSC Testnet
-      56: "#facc15",                  // yellow — BSC Mainnet
+      [LIBERDUS_CHAIN_ID]: colors.chain.liberdus,
+      80002: colors.chain.polygon,
+      137: colors.chain.polygon,
+      11155111: colors.chain.ethereum,
+      1: colors.chain.ethereum,
+      97: colors.chain.bsc,
+      56: colors.chain.bsc,
     };
-    return chainColors[chainId] || "#9ca3af";
+    return chainColors[chainId] || colors.chain.default;
   };
 
   const formatValue = (value: string) => {
@@ -320,39 +321,39 @@ function BridgeTransactions() {
   const getStatusColor = (status: TransactionStatus) => {
     switch (status) {
       case TransactionStatus.COMPLETED:
-        return "#22c55e";
+        return colors.status.success;
       case TransactionStatus.PENDING:
-        return "#fb923c";
+        return colors.status.warning;
       case TransactionStatus.FAILED:
-        return "#ef4444";
+        return colors.status.error;
       default:
-        return "#9ca3af";
+        return colors.text.muted;
     }
   };
 
   const getStatusBg = (status: TransactionStatus) => {
     switch (status) {
       case TransactionStatus.COMPLETED:
-        return "rgba(34, 197, 94, 0.1)";
+        return colors.status.successBg;
       case TransactionStatus.PENDING:
-        return "rgba(251, 146, 60, 0.1)";
+        return colors.status.warningBg;
       case TransactionStatus.FAILED:
-        return "rgba(239, 68, 68, 0.1)";
+        return colors.status.errorBg;
       default:
-        return "rgba(156, 163, 175, 0.1)";
+        return colors.action.hover;
     }
   };
 
   const getStatusBorder = (status: TransactionStatus) => {
     switch (status) {
       case TransactionStatus.COMPLETED:
-        return "1px solid rgba(34, 197, 94, 0.2)";
+        return `1px solid ${colors.status.successBorder}`;
       case TransactionStatus.PENDING:
-        return "1px solid rgba(251, 146, 60, 0.2)";
+        return `1px solid ${colors.status.warningBorder}`;
       case TransactionStatus.FAILED:
-        return "1px solid rgba(239, 68, 68, 0.2)";
+        return `1px solid ${colors.status.errorBorder}`;
       default:
-        return "1px solid rgba(156, 163, 175, 0.2)";
+        return `1px solid ${colors.border.subtle}`;
     }
   };
 
@@ -467,7 +468,7 @@ function BridgeTransactions() {
           right: "-10rem",
           width: "20rem",
           height: "20rem",
-          background: "rgba(168, 85, 247, 0.1)",
+          background: "rgba(99, 102, 241, 0.1)",
           borderRadius: "50%",
           filter: "blur(60px)",
         }}
@@ -511,13 +512,12 @@ function BridgeTransactions() {
         {/* Search Filters */}
         <div
           style={{
-            backdropFilter: "blur(20px)",
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: colors.background.card,
+            border: `1px solid ${colors.border.subtle}`,
             borderRadius: "1rem",
             padding: "1.5rem",
             marginBottom: "1.5rem",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+            boxShadow: colors.shadows.card,
             position: "relative",
             zIndex: 49, // Lower than the nav bar
           }}
@@ -535,7 +535,7 @@ function BridgeTransactions() {
               style={{
                 fontSize: "0.875rem",
                 fontWeight: "500",
-                color: "#d1d5db",
+                color: colors.text.secondary,
               }}
             >
               Search Transactions
@@ -555,12 +555,12 @@ function BridgeTransactions() {
                     display: "flex",
                     alignItems: "center",
                     padding: "0.5rem 0.75rem",
-                    background: "rgba(59, 130, 246, 0.1)",
-                    border: "1px solid rgba(59, 130, 246, 0.2)",
+                    background: colors.status.infoBg,
+                    border: `1px solid ${colors.status.infoBorder}`,
                     borderRadius: "0.5rem",
                     fontSize: "0.875rem",
                     fontWeight: "400",
-                    color: "#F9FAFB",
+                    color: colors.status.infoText,
                   }}
                 >
                   Total Transactions: {totalTransactions.toLocaleString()}
@@ -575,14 +575,14 @@ function BridgeTransactions() {
                   padding: "0.25rem",
                   background:
                     loading || isRefreshing
-                      ? "rgba(156, 163, 175, 0.1)"
-                      : "rgba(34, 197, 94, 0.1)",
+                      ? colors.action.hover
+                      : colors.status.successBg,
                   border:
                     loading || isRefreshing
-                      ? "1px solid rgba(156, 163, 175, 0.2)"
-                      : "1px solid rgba(34, 197, 94, 0.2)",
+                      ? `1px solid ${colors.border.subtle}`
+                      : `1px solid ${colors.status.successBorder}`,
                   borderRadius: "0.5rem",
-                  color: loading || isRefreshing ? "#9ca3af" : "#22c55e",
+                  color: loading || isRefreshing ? colors.text.muted : colors.status.success,
                   cursor: loading || isRefreshing ? "not-allowed" : "pointer",
                   transition: "all 0.2s",
                   display: "flex",
@@ -593,13 +593,13 @@ function BridgeTransactions() {
                 }}
                 onMouseEnter={(e) => {
                   if (!loading && !isRefreshing) {
-                    e.currentTarget.style.background = "rgba(34, 197, 94, 0.2)";
+                    e.currentTarget.style.background = colors.status.successBorder;
                     e.currentTarget.style.transform = "scale(1.05)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!loading && !isRefreshing) {
-                    e.currentTarget.style.background = "rgba(34, 197, 94, 0.1)";
+                    e.currentTarget.style.background = colors.status.successBg;
                     e.currentTarget.style.transform = "scale(1)";
                   }
                 }}
@@ -638,8 +638,8 @@ function BridgeTransactions() {
               style={{
                 display: "flex",
                 position: "relative",
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                background: colors.background.input,
+                border: `1px solid ${colors.border.subtle}`,
                 borderRadius: "0.5rem",
                 overflow: "visible",
               }}
@@ -654,11 +654,11 @@ function BridgeTransactions() {
                   style={{
                     padding: "0.75rem 1rem",
                     background: isDropdownOpen
-                      ? "rgba(168, 85, 247, 0.2)"
-                      : "rgba(255, 255, 255, 0.1)",
+                      ? colors.primary.bg
+                      : colors.background.hover,
                     border: "none",
-                    borderRight: "1px solid rgba(255, 255, 255, 0.1)",
-                    color: "#ffffff",
+                    borderRight: `1px solid ${colors.border.subtle}`,
+                    color: colors.text.primary,
                     fontSize: "0.875rem",
                     fontWeight: "500",
                     cursor: "pointer",
@@ -672,13 +672,13 @@ function BridgeTransactions() {
                   onMouseEnter={(e) => {
                     if (!isDropdownOpen) {
                       e.currentTarget.style.background =
-                        "rgba(255, 255, 255, 0.15)";
+                        colors.action.hover;
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isDropdownOpen) {
                       e.currentTarget.style.background =
-                        "rgba(255, 255, 255, 0.1)";
+                        colors.background.hover;
                     }
                   }}
                 >
@@ -704,13 +704,12 @@ function BridgeTransactions() {
                       top: "100%",
                       left: "0",
                       minWidth: "200px",
-                      background: "rgba(17, 24, 39, 0.98)",
-                      backdropFilter: "blur(20px)",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      background: colors.background.card,
+                      border: `1px solid ${colors.border.subtle}`,
                       borderRadius: "0.5rem",
                       marginTop: "0.25rem",
                       zIndex: 1001,
-                      boxShadow: "0 20px 40px -5px rgba(0, 0, 0, 0.4)",
+                      boxShadow: colors.shadows.xl,
                     }}
                   >
                     {searchTypes.map((type) => (
@@ -726,11 +725,11 @@ function BridgeTransactions() {
                           padding: "0.75rem 1rem",
                           background:
                             searchType === type.value
-                              ? "rgba(168, 85, 247, 0.3)"
+                              ? colors.action.selected
                               : "transparent",
                           border: "none",
                           color:
-                            searchType === type.value ? "#ffffff" : "#d1d5db",
+                            searchType === type.value ? colors.primary.main : colors.text.secondary,
                           fontSize: "0.875rem",
                           fontWeight: searchType === type.value ? "600" : "400",
                           textAlign: "left",
@@ -743,21 +742,21 @@ function BridgeTransactions() {
                         onMouseEnter={(e) => {
                           if (searchType !== type.value) {
                             e.currentTarget.style.background =
-                              "rgba(255, 255, 255, 0.1)";
-                            e.currentTarget.style.color = "#ffffff";
+                              colors.action.hover;
+                            e.currentTarget.style.color = colors.text.primary;
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (searchType !== type.value) {
                             e.currentTarget.style.background = "transparent";
-                            e.currentTarget.style.color = "#d1d5db";
+                            e.currentTarget.style.color = colors.text.secondary;
                           }
                         }}
                       >
                         <span>{type.label}</span>
                         {searchType === type.value && (
                           <span
-                            style={{ color: "#a855f7", fontSize: "0.75rem" }}
+                            style={{ color: colors.primary.light, fontSize: "0.75rem" }}
                           >
                             ✓
                           </span>
@@ -779,7 +778,7 @@ function BridgeTransactions() {
                   padding: "0.75rem 1rem",
                   background: "transparent",
                   border: "none",
-                  color: "#ffffff",
+                  color: colors.text.primary,
                   fontSize: "0.875rem",
                   outline: "none",
                 }}
@@ -791,10 +790,10 @@ function BridgeTransactions() {
                   onClick={clearAllFilters}
                   style={{
                     padding: "0.75rem",
-                    background: "rgba(239, 68, 68, 0.1)",
+                    background: colors.status.errorBg,
                     border: "none",
-                    borderLeft: "1px solid rgba(255, 255, 255, 0.1)",
-                    color: "#ef4444",
+                    borderLeft: `1px solid ${colors.border.subtle}`,
+                    color: colors.status.error,
                     cursor: "pointer",
                     transition: "all 0.2s",
                     display: "flex",
@@ -802,10 +801,10 @@ function BridgeTransactions() {
                     justifyContent: "center",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                    e.currentTarget.style.background = colors.status.errorBorder;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                    e.currentTarget.style.background = colors.status.errorBg;
                   }}
                 >
                   Clear Filters
@@ -820,14 +819,14 @@ function BridgeTransactions() {
                   marginTop: "1rem",
                   padding: "0.75rem 1rem",
                   background: searchError
-                    ? "rgba(239, 68, 68, 0.1)"
-                    : "rgba(59, 130, 246, 0.1)",
+                    ? colors.status.errorBg
+                    : colors.status.infoBg,
                   border: searchError
-                    ? "1px solid rgba(239, 68, 68, 0.2)"
-                    : "1px solid rgba(59, 130, 246, 0.2)",
+                    ? `1px solid ${colors.status.errorBorder}`
+                    : `1px solid ${colors.status.infoBorder}`,
                   borderRadius: "0.5rem",
                   fontSize: "0.875rem",
-                  color: searchError ? "#ef4444" : "#3b82f6",
+                  color: searchError ? colors.status.error : colors.status.infoText,
                 }}
               >
                 {loading
@@ -845,12 +844,11 @@ function BridgeTransactions() {
         {/* Main Card */}
         <div
           style={{
-            backdropFilter: "blur(20px)",
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: colors.background.card,
+            border: `1px solid ${colors.border.subtle}`,
             borderRadius: "1.5rem",
             padding: "0.75rem 2rem",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            boxShadow: colors.shadows.card,
           }}
         >
           {loading && (
@@ -860,7 +858,7 @@ function BridgeTransactions() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "0.75rem",
-                  color: "#a855f7",
+                  color: colors.primary.main,
                   fontSize: "1.125rem",
                 }}
               >
@@ -868,8 +866,8 @@ function BridgeTransactions() {
                   style={{
                     width: "1.5rem",
                     height: "1.5rem",
-                    border: "2px solid rgba(168, 85, 247, 0.3)",
-                    borderTop: "2px solid #a855f7",
+                    border: `2px solid ${colors.primary.bg}`,
+                    borderTop: `2px solid ${colors.primary.main}`,
                     borderRadius: "50%",
                     animation: "spin 1s linear infinite",
                   }}
@@ -884,10 +882,10 @@ function BridgeTransactions() {
               style={{
                 textAlign: "center",
                 padding: "2rem",
-                background: "rgba(239, 68, 68, 0.1)",
-                border: "1px solid rgba(239, 68, 68, 0.2)",
+                background: colors.status.errorBg,
+                border: `1px solid ${colors.status.errorBorder}`,
                 borderRadius: "1rem",
-                color: "#ef4444",
+                color: colors.status.error,
                 fontSize: "1rem",
                 margin: "1rem 0",
               }}
@@ -910,7 +908,7 @@ function BridgeTransactions() {
               style={{
                 textAlign: "center",
                 padding: "3rem",
-                color: "#9ca3af",
+                color: colors.text.muted,
                 fontSize: "1.125rem",
               }}
             >
@@ -955,8 +953,8 @@ function BridgeTransactions() {
                           textAlign: "left",
                           fontSize: "0.875rem",
                           fontWeight: "600",
-                          color: "#d1d5db",
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                          color: colors.text.secondary,
+                          borderBottom: `1px solid ${colors.border.subtle}`,
                         }}
                       >
                         Transaction
@@ -967,8 +965,8 @@ function BridgeTransactions() {
                           textAlign: "left",
                           fontSize: "0.875rem",
                           fontWeight: "600",
-                          color: "#d1d5db",
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                          color: colors.text.secondary,
+                          borderBottom: `1px solid ${colors.border.subtle}`,
                         }}
                       >
                         Sender
@@ -979,8 +977,8 @@ function BridgeTransactions() {
                           textAlign: "left",
                           fontSize: "0.875rem",
                           fontWeight: "600",
-                          color: "#d1d5db",
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                          color: colors.text.secondary,
+                          borderBottom: `1px solid ${colors.border.subtle}`,
                         }}
                       >
                         Value
@@ -991,8 +989,8 @@ function BridgeTransactions() {
                           textAlign: "left",
                           fontSize: "0.875rem",
                           fontWeight: "600",
-                          color: "#d1d5db",
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                          color: colors.text.secondary,
+                          borderBottom: `1px solid ${colors.border.subtle}`,
                         }}
                       >
                         Chain
@@ -1003,8 +1001,8 @@ function BridgeTransactions() {
                           textAlign: "left",
                           fontSize: "0.875rem",
                           fontWeight: "600",
-                          color: "#d1d5db",
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                          color: colors.text.secondary,
+                          borderBottom: `1px solid ${colors.border.subtle}`,
                         }}
                       >
                         Type
@@ -1015,8 +1013,8 @@ function BridgeTransactions() {
                           textAlign: "left",
                           fontSize: "0.875rem",
                           fontWeight: "600",
-                          color: "#d1d5db",
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                          color: colors.text.secondary,
+                          borderBottom: `1px solid ${colors.border.subtle}`,
                         }}
                       >
                         Status
@@ -1027,8 +1025,8 @@ function BridgeTransactions() {
                           textAlign: "left",
                           fontSize: "0.875rem",
                           fontWeight: "600",
-                          color: "#d1d5db",
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                          color: colors.text.secondary,
+                          borderBottom: `1px solid ${colors.border.subtle}`,
                         }}
                       >
                         Issued
@@ -1039,8 +1037,8 @@ function BridgeTransactions() {
                           textAlign: "left",
                           fontSize: "0.875rem",
                           fontWeight: "600",
-                          color: "#d1d5db",
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                          color: colors.text.secondary,
+                          borderBottom: `1px solid ${colors.border.subtle}`,
                         }}
                       >
                         Receipt
@@ -1052,8 +1050,8 @@ function BridgeTransactions() {
                       <tr
                         key={tx.txId}
                         style={{
-                          background: "rgba(255, 255, 255, 0.03)",
-                          border: "1px solid rgba(255, 255, 255, 0.05)",
+                          background: colors.background.card,
+                          border: `1px solid ${colors.border.subtle}`,
                           borderRadius: "0.75rem",
                           transition: "all 0.2s",
                           cursor: "pointer",
@@ -1064,7 +1062,7 @@ function BridgeTransactions() {
                           style={{
                             padding: "1rem",
                             fontSize: "0.875rem",
-                            color: "#e5e7eb",
+                            color: colors.text.primary,
                             fontFamily: "monospace",
                             borderRadius: "0.75rem 0 0 0.75rem",
                           }}
@@ -1074,7 +1072,7 @@ function BridgeTransactions() {
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
-                              color: "#a855f7",
+                              color: colors.text.link,
                               textDecoration: "none",
                               display: "flex",
                               alignItems: "center",
@@ -1082,10 +1080,10 @@ function BridgeTransactions() {
                               transition: "color 0.2s",
                             }}
                             onMouseEnter={(e) =>
-                              (e.currentTarget.style.color = "#9333ea")
+                              (e.currentTarget.style.color = colors.text.linkHover)
                             }
                             onMouseLeave={(e) =>
-                              (e.currentTarget.style.color = "#a855f7")
+                              (e.currentTarget.style.color = colors.text.link)
                             }
                           >
                             <span>{formatAddress(tx.txId)}</span>
@@ -1096,7 +1094,7 @@ function BridgeTransactions() {
                           style={{
                             padding: "1rem",
                             fontSize: "0.875rem",
-                            color: "#e5e7eb",
+                            color: colors.text.primary,
                             fontFamily: "monospace",
                           }}
                         >
@@ -1106,7 +1104,7 @@ function BridgeTransactions() {
                           style={{
                             padding: "1rem",
                             fontSize: "0.875rem",
-                            color: "#ffffff",
+                            color: colors.text.primary,
                             fontWeight: "600",
                           }}
                         >
@@ -1119,12 +1117,12 @@ function BridgeTransactions() {
                               alignItems: "center",
                               gap: "0.375rem",
                               padding: "0.25rem 0.75rem",
-                              background: "rgba(99, 102, 241, 0.1)",
-                              border: "1px solid rgba(99, 102, 241, 0.2)",
+                              background: colors.primary.bg,
+                              border: `1px solid ${colors.primary.border}`,
                               borderRadius: "0.5rem",
                               fontSize: "0.75rem",
                               fontWeight: "500",
-                              color: "#6366f1",
+                              color: colors.primary.main,
                               whiteSpace: "nowrap",
                             }}
                           >
@@ -1132,13 +1130,13 @@ function BridgeTransactions() {
                               style={{
                                 width: "0.5rem",
                                 height: "0.5rem",
-                                background: "#6366f1",
+                                background: colors.primary.main,
                                 borderRadius: "50%",
                                 flexShrink: 0,
                               }}
                             ></div>
                             <span style={{ color: getChainColor(tx.chainId) }}>{getChainName(tx.chainId)}</span>
-                            <span style={{ color: "#9ca3af" }}>→</span>
+                            <span style={{ color: colors.text.muted }}>→</span>
                             <span style={{ color: getChainColor(tx.bridgeChainId) }}>{getBridgeChainName(tx.bridgeChainId)}</span>
                           </span>
                         </td>
@@ -1151,25 +1149,25 @@ function BridgeTransactions() {
                               padding: "0.25rem 0.75rem",
                               background:
                                 tx.type === TransactionType.BRIDGE_IN
-                                  ? "rgba(34, 197, 94, 0.1)"
+                                  ? colors.status.successBg
                                   : tx.type === TransactionType.BRIDGE_CROSS
-                                  ? "rgba(168, 85, 247, 0.1)"
-                                  : "rgba(59, 130, 246, 0.1)",
+                                  ? colors.primary.bg
+                                  : colors.status.infoBg,
                               border:
                                 tx.type === TransactionType.BRIDGE_IN
-                                  ? "1px solid rgba(34, 197, 94, 0.2)"
+                                  ? `1px solid ${colors.status.successBorder}`
                                   : tx.type === TransactionType.BRIDGE_CROSS
-                                  ? "1px solid rgba(168, 85, 247, 0.2)"
-                                  : "1px solid rgba(59, 130, 246, 0.2)",
+                                  ? `1px solid ${colors.primary.border}`
+                                  : `1px solid ${colors.status.infoBorder}`,
                               borderRadius: "0.5rem",
                               fontSize: "0.75rem",
                               fontWeight: "500",
                               color:
                                 tx.type === TransactionType.BRIDGE_IN
-                                  ? "#22c55e"
+                                  ? colors.status.success
                                   : tx.type === TransactionType.BRIDGE_CROSS
-                                  ? "#a855f7"
-                                  : "#3b82f6",
+                                  ? colors.primary.light
+                                  : colors.status.infoText,
                             }}
                           >
                             <span>
@@ -1246,7 +1244,7 @@ function BridgeTransactions() {
                                 <div
                                   style={{
                                     fontSize: "0.75rem",
-                                    color: "#ef4444",
+                                    color: colors.status.error,
                                     cursor: "help",
                                     display: "inline-flex",
                                     alignItems: "center",
@@ -1254,29 +1252,29 @@ function BridgeTransactions() {
                                     width: "1.5rem",
                                     height: "1.5rem",
                                     borderRadius: "50%",
-                                    background: "rgba(239, 68, 68, 0.1)",
-                                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                                    background: colors.status.errorBg,
+                                    border: `1px solid ${colors.status.errorBorder}`,
                                     transition:
                                       "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                                     backdropFilter: "blur(10px)",
                                     boxShadow:
-                                      "0 4px 12px rgba(239, 68, 68, 0.2)",
+                                      `0 4px 12px ${colors.status.errorBorder}`,
                                   }}
                                   onMouseEnter={(e) => {
                                     e.currentTarget.style.background =
-                                      "rgba(239, 68, 68, 0.2)";
+                                      colors.status.errorBorder;
                                     e.currentTarget.style.transform =
                                       "scale(1.1)";
                                     e.currentTarget.style.boxShadow =
-                                      "0 6px 20px rgba(239, 68, 68, 0.3)";
+                                      `0 6px 20px ${colors.status.errorBorder}`;
                                   }}
                                   onMouseLeave={(e) => {
                                     e.currentTarget.style.background =
-                                      "rgba(239, 68, 68, 0.1)";
+                                      colors.status.errorBg;
                                     e.currentTarget.style.transform =
                                       "scale(1)";
                                     e.currentTarget.style.boxShadow =
-                                      "0 4px 12px rgba(239, 68, 68, 0.2)";
+                                      `0 4px 12px ${colors.status.errorBorder}`;
                                   }}
                                 >
                                   <svg
@@ -1304,7 +1302,7 @@ function BridgeTransactions() {
                           style={{
                             padding: "1rem",
                             fontSize: "0.875rem",
-                            color: "#9ca3af",
+                            color: colors.text.muted,
                           }}
                         >
                           {formatDate(tx.txTimestamp)}
@@ -1313,7 +1311,7 @@ function BridgeTransactions() {
                           style={{
                             padding: "1rem",
                             fontSize: "0.875rem",
-                            color: "#e5e7eb",
+                            color: colors.text.primary,
                             fontFamily: "monospace",
                             borderRadius: "0 0.75rem 0.75rem 0",
                           }}
@@ -1326,7 +1324,7 @@ function BridgeTransactions() {
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
-                                color: "#a855f7",
+                                color: colors.primary.light,
                                 textDecoration: "none",
                                 display: "flex",
                                 alignItems: "center",
@@ -1334,10 +1332,10 @@ function BridgeTransactions() {
                                 transition: "color 0.2s",
                               }}
                               onMouseEnter={(e) =>
-                                (e.currentTarget.style.color = "#9333ea")
+                                (e.currentTarget.style.color = colors.text.linkHover)
                               }
                               onMouseLeave={(e) =>
-                                (e.currentTarget.style.color = "#a855f7")
+                                (e.currentTarget.style.color = colors.text.link)
                               }
                             >
                               <span>{formatAddress(tx.receiptId)}</span>
@@ -1369,16 +1367,16 @@ function BridgeTransactions() {
                 disabled={page === 1}
                 style={{
                   padding: "0.5rem 0.75rem",
-                  background: "linear-gradient(to right, #a855f7, #3b82f6)",
+                  background: colors.gradients.primary,
                   border: "none",
                   borderRadius: "0.5rem",
-                  color: "#e5e7eb",
+                  color: colors.text.inverse,
                   fontSize: "0.875rem",
                   fontWeight: "500",
                   cursor: page === 1 ? "not-allowed" : "pointer",
                   transition: "all 0.2s",
                   transform: "scale(1)",
-                  boxShadow: "0 10px 25px rgba(168, 85, 247, 0.3)",
+                  boxShadow: colors.shadows.button,
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
@@ -1387,14 +1385,14 @@ function BridgeTransactions() {
                   if (!e.currentTarget.disabled) {
                     e.currentTarget.style.transform = "scale(1.05)";
                     e.currentTarget.style.background =
-                      "linear-gradient(to right, #9333ea, #2563eb)";
+                      colors.gradients.primaryHover;
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!e.currentTarget.disabled) {
                     e.currentTarget.style.transform = "scale(1)";
                     e.currentTarget.style.background =
-                      "linear-gradient(to right, #a855f7, #3b82f6)";
+                      colors.gradients.primary;
                   }
                 }}
               >
@@ -1404,10 +1402,10 @@ function BridgeTransactions() {
               <span
                 style={{
                   padding: "0.5rem 0.75rem",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  background: colors.background.input,
+                  border: `1px solid ${colors.border.subtle}`,
                   borderRadius: "0.5rem",
-                  color: "#e5e7eb",
+                  color: colors.text.primary,
                   fontSize: "0.875rem",
                   fontWeight: "500",
                   marginLeft: "0.5rem",
@@ -1421,16 +1419,16 @@ function BridgeTransactions() {
                 disabled={page === totalPages}
                 style={{
                   padding: "0.5rem 0.75rem",
-                  background: "linear-gradient(to right, #a855f7, #3b82f6)",
+                  background: colors.gradients.primary,
                   border: "none",
                   borderRadius: "0.5rem",
-                  color: "#e5e7eb",
+                  color: colors.text.inverse,
                   fontSize: "0.875rem",
                   fontWeight: "500",
                   cursor: page === totalPages ? "not-allowed" : "pointer",
                   transition: "all 0.2s",
                   transform: "scale(1)",
-                  boxShadow: "0 10px 25px rgba(168, 85, 247, 0.3)",
+                  boxShadow: colors.shadows.button,
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
@@ -1439,14 +1437,14 @@ function BridgeTransactions() {
                   if (!e.currentTarget.disabled) {
                     e.currentTarget.style.transform = "scale(1.05)";
                     e.currentTarget.style.background =
-                      "linear-gradient(to right, #9333ea, #2563eb)";
+                      colors.gradients.primaryHover;
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!e.currentTarget.disabled) {
                     e.currentTarget.style.transform = "scale(1)";
                     e.currentTarget.style.background =
-                      "linear-gradient(to right, #a855f7, #3b82f6)";
+                      colors.gradients.primary;
                   }
                 }}
               >
@@ -1473,7 +1471,7 @@ function BridgeTransactions() {
               borderRadius: "0.75rem",
               padding: "1rem 1.25rem",
               fontSize: "0.875rem",
-              color: "#ffffff",
+              color: colors.text.inverse,
               maxWidth: "420px",
               maxHeight: "300px",
               wordWrap: "break-word",
@@ -1508,7 +1506,7 @@ function BridgeTransactions() {
                   width: "1.25rem",
                   height: "1.25rem",
                   borderRadius: "0.25rem",
-                  background: "rgba(239, 68, 68, 0.15)",
+                  background: colors.status.errorBg,
                   flexShrink: 0,
                 }}
               >
@@ -1530,7 +1528,7 @@ function BridgeTransactions() {
               <span
                 style={{
                   fontWeight: "600",
-                  color: "#ef4444",
+                  color: colors.status.error,
                   fontSize: "0.875rem",
                   background: "linear-gradient(to right, #ef4444, #dc2626)",
                   WebkitBackgroundClip: "text",
@@ -1544,7 +1542,7 @@ function BridgeTransactions() {
             {/* Reason content with scrolling */}
             <div
               style={{
-                color: "#e5e7eb",
+                color: colors.border.subtle,
                 lineHeight: "1.5",
                 fontSize: "0.8rem",
                 maxHeight: "120px",
@@ -1616,7 +1614,7 @@ function BridgeTransactions() {
             left: "0rem",
             width: "1rem",
             height: "1rem",
-            background: "rgba(168, 85, 247, 0.3)",
+            background: colors.decorative.dotLeft,
             borderRadius: "50%",
             animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
           }}
@@ -1628,7 +1626,7 @@ function BridgeTransactions() {
             right: "0rem",
             width: "1rem",
             height: "1rem",
-            background: "rgba(59, 130, 246, 0.3)",
+            background: colors.decorative.dotRight,
             borderRadius: "50%",
             animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
             animationDelay: "1s",
@@ -1674,8 +1672,8 @@ function BridgeTransactions() {
           }
         }
         .transaction-row:hover {
-          background: rgba(255, 255, 255, 0.08) !important;
-          border-color: rgba(168, 85, 247, 0.3) !important;
+          background: #f8fafc !important;
+          border-color: #e2e8f0 !important;
           transform: translateY(-2px);
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
