@@ -846,8 +846,8 @@ function BridgeTransactions() {
           style={{
             background: colors.background.card,
             border: `1px solid ${colors.border.subtle}`,
-            borderRadius: "1.5rem",
-            padding: "0.75rem 2rem",
+            borderRadius: "1rem",
+            padding: "0.5rem 1.5rem",
             boxShadow: colors.shadows.card,
           }}
         >
@@ -941,108 +941,35 @@ function BridgeTransactions() {
                 <table
                   style={{
                     width: "100%",
-                    borderCollapse: "separate",
-                    borderSpacing: "0 0.5rem",
+                    borderCollapse: "collapse",
                   }}
                 >
                   <thead>
-                    <tr>
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "left",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: colors.text.secondary,
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                        }}
-                      >
-                        Transaction
-                      </th>
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "left",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: colors.text.secondary,
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                        }}
-                      >
-                        Sender
-                      </th>
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "left",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: colors.text.secondary,
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                        }}
-                      >
-                        Value
-                      </th>
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "left",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: colors.text.secondary,
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                        }}
-                      >
-                        Chain
-                      </th>
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "left",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: colors.text.secondary,
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                        }}
-                      >
-                        Type
-                      </th>
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "left",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: colors.text.secondary,
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                        }}
-                      >
-                        Status
-                      </th>
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "left",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: colors.text.secondary,
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                        }}
-                      >
-                        Issued
-                      </th>
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "left",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: colors.text.secondary,
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                        }}
-                      >
-                        Receipt
-                      </th>
+                    <tr
+                      style={{
+                        background: colors.background.input,
+                      }}
+                    >
+                      {["Transaction", "Sender", "Value", "Chain → Chain", "Type", "Status", "Issued", "Receipt"].map((label, i) => (
+                        <th
+                          key={label}
+                          style={{
+                            padding: "0.75rem 1rem",
+                            textAlign: "left",
+                            fontSize: "0.7rem",
+                            fontWeight: "600",
+                            color: colors.text.muted,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            borderBottom: `2px solid ${colors.border.subtle}`,
+                            whiteSpace: "nowrap",
+                            ...(i === 0 ? { borderRadius: "0.5rem 0 0 0" } : {}),
+                            ...(i === 7 ? { borderRadius: "0 0.5rem 0 0" } : {}),
+                          }}
+                        >
+                          {label}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -1050,9 +977,6 @@ function BridgeTransactions() {
                       <tr
                         key={tx.txId}
                         style={{
-                          background: colors.background.card,
-                          border: `1px solid ${colors.border.subtle}`,
-                          borderRadius: "0.75rem",
                           transition: "all 0.2s",
                           cursor: "pointer",
                         }}
@@ -1060,11 +984,11 @@ function BridgeTransactions() {
                       >
                         <td
                           style={{
-                            padding: "1rem",
+                            padding: "0.875rem 1rem",
                             fontSize: "0.875rem",
                             color: colors.text.primary,
                             fontFamily: "monospace",
-                            borderRadius: "0.75rem 0 0 0.75rem",
+                            borderBottom: `1px solid ${colors.border.subtle}`,
                           }}
                         >
                           <a
@@ -1092,25 +1016,27 @@ function BridgeTransactions() {
                         </td>
                         <td
                           style={{
-                            padding: "1rem",
+                            padding: "0.875rem 1rem",
                             fontSize: "0.875rem",
                             color: colors.text.primary,
                             fontFamily: "monospace",
+                            borderBottom: `1px solid ${colors.border.subtle}`,
                           }}
                         >
                           {formatAddress(tx.sender)}
                         </td>
                         <td
                           style={{
-                            padding: "1rem",
+                            padding: "0.875rem 1rem",
                             fontSize: "0.875rem",
                             color: colors.text.primary,
                             fontWeight: "600",
+                            borderBottom: `1px solid ${colors.border.subtle}`,
                           }}
                         >
                           {formatValue(tx.value)}
                         </td>
-                        <td style={{ padding: "1rem" }}>
+                        <td style={{ padding: "0.875rem 1rem", borderBottom: `1px solid ${colors.border.subtle}` }}>
                           <span
                             style={{
                               display: "inline-flex",
@@ -1119,7 +1045,7 @@ function BridgeTransactions() {
                               padding: "0.25rem 0.75rem",
                               background: colors.primary.bg,
                               border: `1px solid ${colors.primary.border}`,
-                              borderRadius: "0.5rem",
+                              borderRadius: "9999px",
                               fontSize: "0.75rem",
                               fontWeight: "500",
                               color: colors.primary.main,
@@ -1140,7 +1066,7 @@ function BridgeTransactions() {
                             <span style={{ color: getChainColor(tx.bridgeChainId) }}>{getBridgeChainName(tx.bridgeChainId)}</span>
                           </span>
                         </td>
-                        <td style={{ padding: "1rem" }}>
+                        <td style={{ padding: "0.875rem 1rem", borderBottom: `1px solid ${colors.border.subtle}` }}>
                           <span
                             style={{
                               display: "inline-flex",
@@ -1159,7 +1085,7 @@ function BridgeTransactions() {
                                   : tx.type === TransactionType.BRIDGE_CROSS
                                   ? `1px solid ${colors.primary.border}`
                                   : `1px solid ${colors.status.infoBorder}`,
-                              borderRadius: "0.5rem",
+                              borderRadius: "9999px",
                               fontSize: "0.75rem",
                               fontWeight: "500",
                               color:
@@ -1186,7 +1112,7 @@ function BridgeTransactions() {
                             </span>
                           </span>
                         </td>
-                        <td style={{ padding: "1rem" }}>
+                        <td style={{ padding: "0.875rem 1rem", borderBottom: `1px solid ${colors.border.subtle}` }}>
                           <div
                             style={{
                               display: "flex",
@@ -1202,7 +1128,7 @@ function BridgeTransactions() {
                                 padding: "0.25rem 0.75rem",
                                 background: getStatusBg(tx.status),
                                 border: getStatusBorder(tx.status),
-                                borderRadius: "0.5rem",
+                                borderRadius: "9999px",
                                 fontSize: "0.75rem",
                                 fontWeight: "500",
                                 color: getStatusColor(tx.status),
@@ -1300,20 +1226,21 @@ function BridgeTransactions() {
                         </td>
                         <td
                           style={{
-                            padding: "1rem",
+                            padding: "0.875rem 1rem",
                             fontSize: "0.875rem",
                             color: colors.text.muted,
+                            borderBottom: `1px solid ${colors.border.subtle}`,
                           }}
                         >
                           {formatDate(tx.txTimestamp)}
                         </td>
                         <td
                           style={{
-                            padding: "1rem",
+                            padding: "0.875rem 1rem",
                             fontSize: "0.875rem",
                             color: colors.text.primary,
                             fontFamily: "monospace",
-                            borderRadius: "0 0.75rem 0.75rem 0",
+                            borderBottom: `1px solid ${colors.border.subtle}`,
                           }}
                         >
                           {!tx.receiptId ? (
@@ -1358,41 +1285,40 @@ function BridgeTransactions() {
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                margin: "0.5rem 0",
-                gap: "0.5rem",
+                padding: "1rem 0",
+                gap: "0.25rem",
               }}
             >
               <button
                 onClick={handlePreviousPage}
                 disabled={page === 1}
                 style={{
-                  padding: "0.5rem 0.75rem",
-                  background: colors.gradients.primary,
-                  border: "none",
+                  padding: "0.5rem 1rem",
+                  background: page === 1 ? colors.background.input : colors.background.card,
+                  border: `1px solid ${colors.border.subtle}`,
                   borderRadius: "0.5rem",
-                  color: colors.text.inverse,
-                  fontSize: "0.875rem",
+                  color: page === 1 ? colors.text.muted : colors.text.secondary,
+                  fontSize: "0.8rem",
                   fontWeight: "500",
                   cursor: page === 1 ? "not-allowed" : "pointer",
                   transition: "all 0.2s",
-                  transform: "scale(1)",
-                  boxShadow: colors.shadows.button,
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.5rem",
+                  gap: "0.375rem",
+                  opacity: page === 1 ? 0.5 : 1,
                 }}
                 onMouseEnter={(e) => {
                   if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.transform = "scale(1.05)";
-                    e.currentTarget.style.background =
-                      colors.gradients.primaryHover;
+                    e.currentTarget.style.borderColor = colors.primary.border;
+                    e.currentTarget.style.color = colors.primary.main;
+                    e.currentTarget.style.background = colors.primary.bg;
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.background =
-                      colors.gradients.primary;
+                    e.currentTarget.style.borderColor = colors.border.subtle;
+                    e.currentTarget.style.color = colors.text.secondary;
+                    e.currentTarget.style.background = colors.background.card;
                   }
                 }}
               >
@@ -1401,50 +1327,44 @@ function BridgeTransactions() {
               </button>
               <span
                 style={{
-                  padding: "0.5rem 0.75rem",
-                  background: colors.background.input,
-                  border: `1px solid ${colors.border.subtle}`,
-                  borderRadius: "0.5rem",
-                  color: colors.text.primary,
-                  fontSize: "0.875rem",
+                  padding: "0.5rem 1rem",
+                  color: colors.text.secondary,
+                  fontSize: "0.8rem",
                   fontWeight: "500",
-                  marginLeft: "0.5rem",
-                  marginRight: "0.5rem",
                 }}
               >
-                Page {page} of {totalPages}
+                {page} / {totalPages}
               </span>
               <button
                 onClick={handleNextPage}
                 disabled={page === totalPages}
                 style={{
-                  padding: "0.5rem 0.75rem",
-                  background: colors.gradients.primary,
-                  border: "none",
+                  padding: "0.5rem 1rem",
+                  background: page === totalPages ? colors.background.input : colors.background.card,
+                  border: `1px solid ${colors.border.subtle}`,
                   borderRadius: "0.5rem",
-                  color: colors.text.inverse,
-                  fontSize: "0.875rem",
+                  color: page === totalPages ? colors.text.muted : colors.text.secondary,
+                  fontSize: "0.8rem",
                   fontWeight: "500",
                   cursor: page === totalPages ? "not-allowed" : "pointer",
                   transition: "all 0.2s",
-                  transform: "scale(1)",
-                  boxShadow: colors.shadows.button,
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.5rem",
+                  gap: "0.375rem",
+                  opacity: page === totalPages ? 0.5 : 1,
                 }}
                 onMouseEnter={(e) => {
                   if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.transform = "scale(1.05)";
-                    e.currentTarget.style.background =
-                      colors.gradients.primaryHover;
+                    e.currentTarget.style.borderColor = colors.primary.border;
+                    e.currentTarget.style.color = colors.primary.main;
+                    e.currentTarget.style.background = colors.primary.bg;
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.background =
-                      colors.gradients.primary;
+                    e.currentTarget.style.borderColor = colors.border.subtle;
+                    e.currentTarget.style.color = colors.text.secondary;
+                    e.currentTarget.style.background = colors.background.card;
                   }
                 }}
               >
@@ -1671,11 +1591,11 @@ function BridgeTransactions() {
             transform: translateX(-50%) translateY(-100%) scale(1);
           }
         }
-        .transaction-row:hover {
-          background: #f8fafc !important;
-          border-color: #e2e8f0 !important;
-          transform: translateY(-2px);
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        .transaction-row:hover td {
+          background: ${colors.background.input} !important;
+        }
+        .transaction-row:hover td:first-child {
+          box-shadow: inset 3px 0 0 ${colors.primary.main};
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
