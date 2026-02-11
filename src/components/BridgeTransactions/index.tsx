@@ -460,32 +460,6 @@ function BridgeTransactions() {
         overflow: "auto",
       }}
     >
-      {/* Background decoration */}
-      {/* <div
-        style={{
-          position: "absolute",
-          top: "-10rem",
-          right: "-10rem",
-          width: "20rem",
-          height: "20rem",
-          background: "rgba(99, 102, 241, 0.1)",
-          borderRadius: "50%",
-          filter: "blur(60px)",
-        }}
-      ></div>
-      <div
-        style={{
-          position: "absolute",
-          bottom: "-10rem",
-          left: "-10rem",
-          width: "20rem",
-          height: "20rem",
-          background: "rgba(59, 130, 246, 0.1)",
-          borderRadius: "50%",
-          filter: "blur(60px)",
-        }}
-      ></div> */}
-
       <div
         style={{
           position: "relative",
@@ -494,21 +468,6 @@ function BridgeTransactions() {
           margin: "0 auto",
         }}
       >
-        {/* Header */}
-        {/* <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <h1
-            style={{
-              fontSize: "1.2rem",
-              fontWeight: "bold",
-              background: "linear-gradient(to right, #ffffff, #d1d5db)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            Bridge Transactions
-          </h1>
-        </div> */}
-
         {/* Search Filters */}
         <div
           style={{
@@ -847,8 +806,8 @@ function BridgeTransactions() {
             background: colors.background.card,
             border: `1px solid ${colors.border.subtle}`,
             borderRadius: "1rem",
-            padding: "0.5rem 1.5rem",
             boxShadow: colors.shadows.card,
+            overflow: "hidden",
           }}
         >
           {loading && (
@@ -887,7 +846,7 @@ function BridgeTransactions() {
                 borderRadius: "1rem",
                 color: colors.status.error,
                 fontSize: "1rem",
-                margin: "1rem 0",
+                margin: "1.5rem",
               }}
             >
               <div
@@ -950,7 +909,7 @@ function BridgeTransactions() {
                         background: colors.background.input,
                       }}
                     >
-                      {["Transaction", "Sender", "Value", "Chain → Chain", "Type", "Status", "Issued", "Receipt"].map((label, i) => (
+                      {["Transaction", "Sender", "Value", "Chain → Chain", "Type", "Status", "Issued", "Receipt"].map((label) => (
                         <th
                           key={label}
                           style={{
@@ -963,8 +922,6 @@ function BridgeTransactions() {
                             letterSpacing: "0.05em",
                             borderBottom: `2px solid ${colors.border.subtle}`,
                             whiteSpace: "nowrap",
-                            ...(i === 0 ? { borderRadius: "0.5rem 0 0 0" } : {}),
-                            ...(i === 7 ? { borderRadius: "0 0.5rem 0 0" } : {}),
                           }}
                         >
                           {label}
@@ -1285,8 +1242,9 @@ function BridgeTransactions() {
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                padding: "1rem 0",
+                padding: "1rem 1.5rem",
                 gap: "0.25rem",
+                borderTop: `1px solid ${colors.border.subtle}`,
               }}
             >
               <button
@@ -1591,11 +1549,17 @@ function BridgeTransactions() {
             transform: translateX(-50%) translateY(-100%) scale(1);
           }
         }
+        .transaction-row:nth-child(even) td {
+          background: ${colors.base.slate50};
+        }
         .transaction-row:hover td {
-          background: ${colors.background.input} !important;
+          background: ${colors.base.slate100} !important;
         }
         .transaction-row:hover td:first-child {
           box-shadow: inset 3px 0 0 ${colors.primary.main};
+        }
+        .transaction-row td {
+          transition: background 0.15s ease;
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
