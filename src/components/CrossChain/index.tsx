@@ -1,7 +1,7 @@
 "use client";
 
 import "react-toastify/dist/ReactToastify.css";
-import { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import {
   wagmiConfig,
@@ -11,13 +11,19 @@ import {
   getChainName,
   getSupportedChainIds,
   supportsBridgeChainId,
+  isVaultChain,
+  getVaultContractAddress,
+  isLiberdusNetworkEnabled,
 } from "@/app/wagmi";
 import { abi as LiberdusABI } from "../../utils/abis/Liberdus.json";
 import { abi as LiberdusSecondaryABI } from "../../utils/abis/LiberdusSecondary.json";
+import { abi as VaultABI } from "../../utils/abis/Vault.json";
 import { toast } from "react-toastify";
 import { useAccount, useSwitchChain } from "wagmi";
 import { colors } from "@/theme/colors";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+
+const enableLiberdusNetwork = isLiberdusNetworkEnabled();
 
 // SVG Refresh Icon Component
 const RefreshIcon = ({ size = 12, isLoading = false }: { size?: number; isLoading?: boolean }) => (
@@ -36,14 +42,68 @@ const RefreshIcon = ({ size = 12, isLoading = false }: { size?: number; isLoadin
   </svg>
 );
 
-// Swap Icon Component
-const SwapIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z" />
-  </svg>
-);
+// Static chain display (non-interactive, used for fixed chains)
+function StaticChainDisplay({ label, chainName }: { label: string; chainName: string }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <p
+        style={{
+          fontSize: "0.75rem",
+          color: colors.text.muted,
+          margin: "0 0 0.5rem 0",
+          fontWeight: "500",
+        }}
+      >
+        {label}
+      </p>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.625rem",
+          padding: "0.625rem 0.875rem",
+          background: colors.background.input,
+          border: `1px solid ${colors.border.subtle}`,
+          borderRadius: "0.75rem",
+          opacity: 0.75,
+        }}
+      >
+        <div
+          style={{
+            width: "1.5rem",
+            height: "1.5rem",
+            background: colors.gradients.primary,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "0.625rem",
+            color: "white",
+            fontWeight: "600",
+            flexShrink: 0,
+          }}
+        >
+          {chainName.charAt(0)}
+        </div>
+        <span
+          style={{
+            color: colors.text.primary,
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {chainName}
+        </span>
+      </div>
+    </div>
+  );
+}
 
-// Chain Selector Dropdown
+// Chain Selector Dropdown (used only for selectable From chain in Liberdus mode)
 function ChainSelector({
   label,
   selectedChainId,
@@ -277,43 +337,36 @@ function CrossChain() {
   const [balance, setBalance] = useState("0");
   const [chainId, setChainId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // token contract at contractAddress — used for balanceOf and approve (vault flow)
   const [contract, setContract] = useState<ethers.Contract | null>(null);
+  // vault contract at vaultContractAddress — used for bridgeOut and maxBridgeInAmount when vault chain
+  const [vaultContract, setVaultContract] = useState<ethers.Contract | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [amountError, setAmountError] = useState<string>("");
+  const [maxBridgeLimit, setMaxBridgeLimit] = useState<string>("0");
   const amountRef = useRef(amount);
 
-  // Cross-chain specific state
-  const supportedIds = getSupportedChainIds();
-  const [fromChainId, setFromChainId] = useState<number | null>(networkConfig.defaultChain);
-  const [toChainId, setToChainId] = useState<number | null>(networkConfig.secondaryChain);
+  // In Liberdus mode: fromChainId is selectable, toChainId is null (Liberdus Network)
+  // In fixed mode: both are locked to defaultChain and secondaryChain
+  const [fromChainId, setFromChainId] = useState<number>(networkConfig.defaultChain);
 
   const isCurrentChainSupported = chainId ? isSupportedChain(chainId) : false;
 
-  // Sync fromChainId when wallet chain changes externally
+  // In fixed mode (enableLiberdusNetwork === false), wallet must be on defaultChain
+  const requiredChainId = enableLiberdusNetwork ? fromChainId : networkConfig.defaultChain;
+  const isOnRequiredChain = chainId === requiredChainId;
+
+  // Sync fromChainId when wallet chain changes (only in Liberdus mode where From is selectable)
   useEffect(() => {
+    if (!enableLiberdusNetwork) return;
     if (walletChainId && isSupportedChain(walletChainId)) {
       setFromChainId(walletChainId);
-      // If toChainId is the same as the new fromChainId, swap it
-      if (toChainId === walletChainId) {
-        const otherChains = supportedIds.filter((id) => id !== walletChainId);
-        if (otherChains.length > 0) {
-          setToChainId(otherChains[0]);
-        }
-      }
     }
   }, [walletChainId]);
 
-  // Handle "From" chain selection
+  // Handle "From" chain selection (Liberdus mode only)
   const handleFromChainSelect = async (newFromChainId: number) => {
     setFromChainId(newFromChainId);
-    // If toChainId conflicts, pick another
-    if (toChainId === newFromChainId) {
-      const otherChains = supportedIds.filter((id) => id !== newFromChainId);
-      if (otherChains.length > 0) {
-        setToChainId(otherChains[0]);
-      }
-    }
-    // Switch wallet network
     try {
       await switchChain({ chainId: newFromChainId });
     } catch (error) {
@@ -321,23 +374,13 @@ function CrossChain() {
     }
   };
 
-  // Handle "To" chain selection
-  const handleToChainSelect = (newToChainId: number) => {
-    setToChainId(newToChainId);
-  };
-
-  // Swap From and To chains
-  const handleSwapChains = async () => {
-    if (!fromChainId || !toChainId) return;
-    const prevFrom = fromChainId;
-    const prevTo = toChainId;
-    setFromChainId(prevTo);
-    setToChainId(prevFrom);
-    // Switch wallet to the new From chain
+  // Switch wallet to the required chain
+  const handleSwitchToRequiredChain = async () => {
     try {
-      await switchChain({ chainId: prevTo });
+      await switchChain({ chainId: requiredChainId });
     } catch (error) {
       console.error("Failed to switch chain:", error);
+      toast.error("Failed to switch network");
     }
   };
 
@@ -356,12 +399,33 @@ function CrossChain() {
         return false;
       }
 
+      if (maxBridgeLimit !== "0" && parseFloat(value) > parseFloat(maxBridgeLimit)) {
+        setAmountError(`Amount exceeds max bridge limit of ${parseFloat(maxBridgeLimit).toLocaleString()} LIB`);
+        return false;
+      }
+
       return true;
     },
-    [balance]
+    [balance, maxBridgeLimit]
   );
 
-  // Debounced balance fetching function
+  // Fetch max bridge limit from the bridge contract (vault or regular)
+  const fetchMaxBridgeLimit = useCallback(async () => {
+    const bridgeContract = vaultContract ?? contract;
+    if (!bridgeContract || !chainId || !isSupportedChain(chainId)) {
+      setMaxBridgeLimit("0");
+      return;
+    }
+    try {
+      const maxAmount = await bridgeContract.maxBridgeInAmount();
+      setMaxBridgeLimit(ethers.formatEther(maxAmount));
+    } catch (error) {
+      console.error("Error fetching max bridge limit:", error);
+      setMaxBridgeLimit("0");
+    }
+  }, [contract, vaultContract, chainId]);
+
+  // Debounced balance fetching function — always reads from the token contract
   const fetchBalance = useCallback(async () => {
     if (
       !contract ||
@@ -371,22 +435,23 @@ function CrossChain() {
     ) {
       setBalance("0");
       setAmount("");
+      amountRef.current = "";
       return;
     }
 
     setIsLoadingBalance(true);
     try {
       const contractAddress = getContractAddress(chainId);
-      const contractAbi = supportsBridgeChainId(chainId) ? LiberdusSecondaryABI : LiberdusABI;
       const freshProvider = new ethers.BrowserProvider(window.ethereum);
+      // Balance is always on the ERC20 token contract (Liberdus ABI has balanceOf)
       const freshContract = new ethers.Contract(
         contractAddress,
-        contractAbi,
+        LiberdusABI,
         freshProvider
       );
 
-      const balance = await freshContract.balanceOf(signer.address);
-      const formatted = ethers.formatEther(balance);
+      const bal = await freshContract.balanceOf(signer.address);
+      const formatted = ethers.formatEther(bal);
       setBalance(formatted);
 
       const currentAmount = amountRef.current;
@@ -397,11 +462,12 @@ function CrossChain() {
           setAmountError("");
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error getting balance:", error);
       setBalance("0");
       setAmount("");
-      if (!error?.message?.includes("network changed")) {
+      amountRef.current = "";
+      if (!(error as { message?: string })?.message?.includes("network changed")) {
         toast.error("Failed to fetch balance");
       }
     } finally {
@@ -454,6 +520,7 @@ function CrossChain() {
       setSigner(null);
       setBalance("0");
       setAmount("");
+      amountRef.current = "";
       setAmountError("");
       return;
     }
@@ -475,13 +542,16 @@ function CrossChain() {
         if (chainId !== null && chainId !== newChainId) {
           setBalance("0");
           setAmount("");
+          amountRef.current = "";
           setAmountError("");
           setContract(null);
+          setVaultContract(null);
+          setMaxBridgeLimit("0");
         }
 
         setChainId(newChainId);
-      } catch (error: any) {
-        if (!error.message?.includes("network changed")) {
+      } catch (error) {
+        if (!(error as { message?: string }).message?.includes("network changed")) {
           console.error("Error getting network:", error);
         }
       }
@@ -495,8 +565,11 @@ function CrossChain() {
 
         setBalance("0");
         setAmount("");
+        amountRef.current = "";
         setAmountError("");
         setContract(null);
+        setVaultContract(null);
+        setMaxBridgeLimit("0");
         setChainId(chainIdNum);
 
         try {
@@ -520,6 +593,7 @@ function CrossChain() {
           setSigner(null);
           setBalance("0");
           setAmount("");
+          amountRef.current = "";
           setAmountError("");
         } else if (provider) {
           try {
@@ -546,30 +620,43 @@ function CrossChain() {
     }
   }, [provider, chainId, isConnected]);
 
-  // Update contract when chain changes
+  // Update contracts when chain changes
   useEffect(() => {
     if (provider && chainId && isSupportedChain(chainId)) {
       try {
-        const contractAddress = getContractAddress(chainId);
-        const contractAbi = supportsBridgeChainId(chainId) ? LiberdusSecondaryABI : LiberdusABI;
+        const tokenAddress = getContractAddress(chainId);
+        const tokenAbi = supportsBridgeChainId(chainId) ? LiberdusSecondaryABI : LiberdusABI;
         const timer = setTimeout(() => {
-          const newContract = new ethers.Contract(
-            contractAddress,
-            contractAbi,
-            provider
-          );
+          // Token contract for balance checks and approval
+          const newContract = new ethers.Contract(tokenAddress, tokenAbi, provider);
           setContract(newContract);
+
+          // Vault contract for bridgeOut and maxBridgeInAmount (if applicable)
+          if (isVaultChain(chainId)) {
+            const vaultAddress = getVaultContractAddress(chainId);
+            if (vaultAddress) {
+              const newVaultContract = new ethers.Contract(vaultAddress, VaultABI, provider);
+              setVaultContract(newVaultContract);
+            } else {
+              setVaultContract(null);
+            }
+          } else {
+            setVaultContract(null);
+          }
         }, 100);
 
         return () => clearTimeout(timer);
       } catch (error) {
-        console.error("Error creating contract:", error);
+        console.error("Error creating contracts:", error);
         setContract(null);
+        setVaultContract(null);
       }
     } else {
       setContract(null);
+      setVaultContract(null);
       setBalance("0");
       setAmount("");
+      amountRef.current = "";
       setAmountError("");
     }
   }, [provider, chainId]);
@@ -585,6 +672,7 @@ function CrossChain() {
     } else {
       setBalance("0");
       setAmount("");
+      amountRef.current = "";
       setAmountError("");
     }
   }, [
@@ -594,6 +682,18 @@ function CrossChain() {
     chainId,
     fetchBalance,
   ]);
+
+  // Fetch max bridge limit when bridge contract is ready
+  useEffect(() => {
+    if ((contract || vaultContract) && chainId && isSupportedChain(chainId)) {
+      const timer = setTimeout(() => {
+        fetchMaxBridgeLimit();
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setMaxBridgeLimit("0");
+    }
+  }, [contract, vaultContract, chainId, fetchMaxBridgeLimit]);
 
   // Get signer when provider is available and user is connected
   useEffect(() => {
@@ -612,8 +712,8 @@ function CrossChain() {
   }, [provider, isConnected]);
 
   const submitBridgeOut = async () => {
-    if (!isCurrentChainSupported) {
-      toast.error("Please switch to a supported network");
+    if (!isOnRequiredChain) {
+      toast.error(`Please switch to ${getChainName(requiredChainId)}`);
       return;
     }
 
@@ -621,90 +721,140 @@ function CrossChain() {
       return;
     }
 
-    if (!toChainId) {
-      toast.error("Please select a destination chain");
-      return;
-    }
-
     setIsLoading(true);
     try {
       if (!contract || !signer) throw new Error("Contract or signer not ready");
 
-      const contractWithSigner = contract.connect(signer) as any;
       const bridgeAmount = ethers.parseUnits(amount, 18);
 
-      toast.info("Initiating cross-chain bridge transaction...");
+      // Determine if using vault contract for this chain
+      const useVault = isVaultChain(chainId!) && !!vaultContract;
 
-      // Check if this chain's contract supports destinationChainId parameter
-      const useDestinationParam = supportsBridgeChainId(chainId!);
-      const bridgeOutFn = useDestinationParam
-        ? contractWithSigner[
-            "bridgeOut(uint256,address,uint256,uint256)"
-          ]
-        : contractWithSigner["bridgeOut(uint256,address,uint256)"];
+      if (useVault) {
+        const vaultAddress = getVaultContractAddress(chainId!);
+        if (!vaultAddress) throw new Error("Vault contract address not configured");
 
-      const tx = useDestinationParam
-        ? await bridgeOutFn(bridgeAmount, signer.address, chainId, toChainId)
-        : await bridgeOutFn(bridgeAmount, signer.address, chainId);
+        // Check ERC20 allowance and approve if needed
+        const currentAllowance = await contract.allowance(signer.address, vaultAddress);
+        if (currentAllowance < bridgeAmount) {
+          toast.info("Approving vault to spend tokens...");
+          const tokenWithSigner = contract.connect(signer);
+          const approveTx = await (tokenWithSigner as ethers.Contract).approve(vaultAddress, ethers.MaxUint256);
+          toast.info("Waiting for approval confirmation...");
+          await approveTx.wait();
+          toast.success("Approval confirmed!");
+        }
 
-      if (tx == null) {
-        throw new Error("Transaction not submitted");
+        toast.info("Initiating bridge transaction...");
+        const vaultWithSigner = vaultContract!.connect(signer) as ethers.Contract;
+
+        let tx;
+        if (enableLiberdusNetwork) {
+          // To Liberdus Network: 3-param bridgeOut
+          tx = await vaultWithSigner["bridgeOut(uint256,address,uint256)"](
+            bridgeAmount,
+            signer.address,
+            chainId
+          );
+        } else {
+          // To secondaryChain (e.g. BSC): 4-param bridgeOut with destination
+          tx = await vaultWithSigner["bridgeOut(uint256,address,uint256,uint256)"](
+            bridgeAmount,
+            signer.address,
+            chainId,
+            networkConfig.secondaryChain
+          );
+        }
+
+        if (tx == null) throw new Error("Transaction not submitted");
+
+        toast.info(`Transaction submitted: ${tx.hash}. Waiting for confirmation...`);
+        const receipt = await tx.wait();
+
+        const rawLogs = receipt.logs as ethers.Log[];
+        const events = rawLogs
+          .filter((log) => log.address.toLowerCase() === vaultAddress.toLowerCase())
+          .map((log) => {
+            try {
+              return vaultContract!.interface.parseLog(log);
+            } catch {
+              return null;
+            }
+          })
+          .filter((event): event is ethers.LogDescription => event !== null);
+
+        console.log("Decoded Vault Events:", events);
+        events.forEach((event) => {
+          console.log(`Event ${event.name} emitted with args:`, event.args);
+        });
+
+        toast.success(`Bridge transaction completed! Hash: ${tx.hash}`);
+      } else {
+        // Regular (non-vault) bridge
+        const contractWithSigner = contract.connect(signer) as ethers.Contract;
+
+        // In fixed mode (non-Liberdus), use destination chain param if supported
+        const useDestinationParam = !enableLiberdusNetwork && supportsBridgeChainId(chainId!);
+        const bridgeOutFn = useDestinationParam
+          ? contractWithSigner["bridgeOut(uint256,address,uint256,uint256)"]
+          : contractWithSigner["bridgeOut(uint256,address,uint256)"];
+
+        toast.info("Initiating bridge transaction...");
+
+        const tx = useDestinationParam
+          ? await bridgeOutFn(bridgeAmount, signer.address, chainId, networkConfig.secondaryChain)
+          : await bridgeOutFn(bridgeAmount, signer.address, chainId);
+
+        if (tx == null) throw new Error("Transaction not submitted");
+
+        toast.info(`Transaction submitted: ${tx.hash}. Waiting for confirmation...`);
+        const receipt = await tx.wait();
+
+        const rawLogs = receipt.logs as ethers.Log[];
+        const contractAddress = getContractAddress(chainId!);
+        const events = rawLogs
+          .filter((log) => log.address.toLowerCase() === contractAddress.toLowerCase())
+          .map((log) => {
+            try {
+              return contract.interface.parseLog(log);
+            } catch {
+              return null;
+            }
+          })
+          .filter((event): event is ethers.LogDescription => event !== null);
+
+        console.log("Decoded Events:", events);
+        events.forEach((event) => {
+          console.log(`Event ${event.name} emitted with args:`, event.args);
+        });
+
+        toast.success(`Bridge transaction completed! Hash: ${tx.hash}`);
       }
-
-      toast.info(
-        `Transaction submitted: ${tx.hash}. Waiting for confirmation...`
-      );
-
-      const receipt = await tx.wait();
-
-      const rawLogs = receipt.logs;
-      const contractAddress = getContractAddress(chainId!);
-
-      const events = rawLogs
-        .filter(
-          (log: any) =>
-            log.address.toLowerCase() === contractAddress.toLowerCase()
-        )
-        .map((log: any) => {
-          try {
-            return contract.interface.parseLog(log);
-          } catch (error) {
-            return null;
-          }
-        })
-        .filter((event: any) => event !== null);
-
-      console.log("Decoded Events:", events);
-
-      events.forEach((event: any) => {
-        console.log(`Event ${event.name} emitted with args:`, event.args);
-      });
-
-      toast.success(`Bridge transaction completed! Hash: ${tx.hash}`);
 
       await fetchBalance();
       setAmount("");
       setAmountError("");
-    } catch (e: any) {
+    } catch (e) {
       console.error("Bridge transaction error:", e);
+      const err = e as { code?: number; message?: string };
 
-      if (e.code === 4001) {
+      if (err.code === 4001) {
         toast.error("Transaction rejected by user");
-      } else if (e.code === -32603) {
+      } else if (err.code === -32603) {
         toast.error("Internal JSON-RPC error. Please try again.");
-      } else if (e.message?.includes("insufficient funds")) {
+      } else if (err.message?.includes("insufficient funds")) {
         toast.error("Insufficient funds for transaction");
-      } else if (e.message?.includes("gas")) {
+      } else if (err.message?.includes("gas")) {
         toast.error("Gas estimation failed. Please try again.");
       } else {
-        toast.error(e.message || "Transaction failed");
+        toast.error(err.message || "Transaction failed");
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  function onAmountChange(e: any) {
+  function onAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setAmount(value);
@@ -720,8 +870,11 @@ function CrossChain() {
 
   const setMaxAmount = () => {
     if (balance && parseFloat(balance) > 0) {
-      setAmount(balance);
-      amountRef.current = balance;
+      const max = maxBridgeLimit !== "0"
+        ? String(Math.min(parseFloat(balance), parseFloat(maxBridgeLimit)))
+        : balance;
+      setAmount(max);
+      amountRef.current = max;
       setAmountError("");
     }
   };
@@ -732,6 +885,11 @@ function CrossChain() {
     ((isConnected || signer) &&
       (!amount || parseFloat(amount) === 0 || !!amountError)) ||
     ((isConnected || signer) && (!balance || parseFloat(balance) === 0));
+
+  // Determine the "To" chain display name
+  const toChainName = enableLiberdusNetwork
+    ? "Liberdus Network"
+    : getChainName(networkConfig.secondaryChain);
 
   return (
     <div
@@ -782,7 +940,9 @@ function CrossChain() {
                 margin: 0,
               }}
             >
-              Transfer LIB across networks
+              {enableLiberdusNetwork
+                ? "Transfer LIB to Liberdus Network"
+                : `Transfer LIB from ${getChainName(networkConfig.defaultChain)} to ${getChainName(networkConfig.secondaryChain)}`}
             </p>
           </div>
 
@@ -796,18 +956,23 @@ function CrossChain() {
             }}
           >
             {/* From Chain */}
-            <ChainSelector
-              label="From"
-              selectedChainId={fromChainId}
-              excludeChainId={toChainId}
-              onSelect={handleFromChainSelect}
-              disabled={!isConnected && !signer}
-            />
+            {enableLiberdusNetwork ? (
+              <ChainSelector
+                label="From"
+                selectedChainId={fromChainId}
+                excludeChainId={null}
+                onSelect={handleFromChainSelect}
+                disabled={!isConnected && !signer}
+              />
+            ) : (
+              <StaticChainDisplay
+                label="From"
+                chainName={getChainName(networkConfig.defaultChain)}
+              />
+            )}
 
-            {/* Swap Button */}
-            <button
-              onClick={handleSwapChains}
-              disabled={!fromChainId || !toChainId || (!isConnected && !signer)}
+            {/* Arrow indicator (no swap in either mode) */}
+            <div
               style={{
                 width: "2.25rem",
                 height: "2.25rem",
@@ -818,48 +983,21 @@ function CrossChain() {
                 border: `1px solid ${colors.primary.border}`,
                 borderRadius: "50%",
                 color: colors.primary.main,
-                cursor:
-                  !fromChainId || !toChainId || (!isConnected && !signer)
-                    ? "not-allowed"
-                    : "pointer",
-                transition: "all 0.2s ease",
                 flexShrink: 0,
                 marginBottom: "0.05rem",
-                opacity:
-                  !fromChainId || !toChainId || (!isConnected && !signer)
-                    ? 0.4
-                    : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.background = colors.primary.bgHover;
-                  e.currentTarget.style.transform = "rotate(180deg)";
-                  e.currentTarget.style.borderColor = colors.border.focus;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.background = colors.primary.bg;
-                  e.currentTarget.style.transform = "rotate(0deg)";
-                  e.currentTarget.style.borderColor = colors.primary.border;
-                }
               }}
             >
-              <SwapIcon />
-            </button>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+              </svg>
+            </div>
 
             {/* To Chain */}
-            <ChainSelector
-              label="To"
-              selectedChainId={toChainId}
-              excludeChainId={fromChainId}
-              onSelect={handleToChainSelect}
-              disabled={!isConnected && !signer}
-            />
+            <StaticChainDisplay label="To" chainName={toChainName} />
           </div>
 
           {/* Amount Section */}
-          {isCurrentChainSupported && isConnected && (
+          {isCurrentChainSupported && isConnected && isOnRequiredChain && (
             <div
               style={{
                 display: "flex",
@@ -1017,6 +1155,19 @@ function CrossChain() {
                   LIB
                 </div>
               </div>
+              {/* Max bridge limit info */}
+              {maxBridgeLimit !== "0" && (
+                <p
+                  style={{
+                    color: colors.text.muted,
+                    fontSize: "0.75rem",
+                    margin: 0,
+                    paddingLeft: "0.5rem",
+                  }}
+                >
+                  Max bridge limit: {parseFloat(maxBridgeLimit).toLocaleString()} LIB
+                </p>
+              )}
               {/* Error message */}
               {amountError && (
                 <p
@@ -1053,11 +1204,12 @@ function CrossChain() {
                 (!authenticationStatus ||
                   authenticationStatus === "authenticated");
 
+              const needsChainSwitch = connected && isCurrentChainSupported && !isOnRequiredChain;
+              const isWrongChain = connected && !isCurrentChainSupported;
+
               return (
                 <div
-                  style={{
-                    width: "100%",
-                  }}
+                  style={{ width: "100%" }}
                   {...(!ready && {
                     "aria-hidden": true,
                     style: {
@@ -1068,16 +1220,24 @@ function CrossChain() {
                   })}
                 >
                   <button
-                    onClick={!connected ? openConnectModal : submitBridgeOut}
+                    onClick={
+                      !connected
+                        ? openConnectModal
+                        : needsChainSwitch || isWrongChain
+                        ? handleSwitchToRequiredChain
+                        : submitBridgeOut
+                    }
                     disabled={
                       connected &&
+                      !needsChainSwitch &&
+                      !isWrongChain &&
                       (isButtonDisabled || !isCurrentChainSupported)
                     }
                     style={{
                       width: "100%",
                       padding: "1rem",
                       background:
-                        connected && !isCurrentChainSupported
+                        connected && (isWrongChain || needsChainSwitch)
                           ? colors.gradients.error
                           : colors.gradients.primary,
                       color: colors.text.inverse,
@@ -1087,6 +1247,8 @@ function CrossChain() {
                       border: "none",
                       cursor:
                         connected &&
+                        !needsChainSwitch &&
+                        !isWrongChain &&
                         (isButtonDisabled || !isCurrentChainSupported)
                           ? "not-allowed"
                           : "pointer",
@@ -1094,13 +1256,17 @@ function CrossChain() {
                       transform: "scale(1)",
                       boxShadow:
                         connected &&
+                        !needsChainSwitch &&
+                        !isWrongChain &&
                         (isButtonDisabled || !isCurrentChainSupported)
                           ? "none"
-                          : connected && !isCurrentChainSupported
+                          : connected && (isWrongChain || needsChainSwitch)
                           ? "0 10px 25px rgba(220, 38, 38, 0.3)"
                           : colors.shadows.button,
                       opacity:
                         connected &&
+                        !needsChainSwitch &&
+                        !isWrongChain &&
                         (isButtonDisabled || !isCurrentChainSupported)
                           ? 0.6
                           : 1,
@@ -1109,7 +1275,7 @@ function CrossChain() {
                       if (!e.currentTarget.disabled) {
                         e.currentTarget.style.transform = "scale(1.02)";
                         e.currentTarget.style.background =
-                          connected && !isCurrentChainSupported
+                          connected && (isWrongChain || needsChainSwitch)
                             ? colors.gradients.errorHover
                             : colors.gradients.primaryHover;
                       }
@@ -1118,7 +1284,7 @@ function CrossChain() {
                       if (!e.currentTarget.disabled) {
                         e.currentTarget.style.transform = "scale(1)";
                         e.currentTarget.style.background =
-                          connected && !isCurrentChainSupported
+                          connected && (isWrongChain || needsChainSwitch)
                             ? colors.gradients.error
                             : colors.gradients.primary;
                       }
@@ -1159,8 +1325,10 @@ function CrossChain() {
                       "Loading Balance..."
                     ) : !connected ? (
                       "Connect Wallet"
-                    ) : !isCurrentChainSupported ? (
-                      "Switch to Supported Network"
+                    ) : isWrongChain ? (
+                      `Switch to ${getChainName(requiredChainId)}`
+                    ) : needsChainSwitch ? (
+                      `Switch to ${getChainName(requiredChainId)}`
                     ) : (
                       "Send"
                     )}

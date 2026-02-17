@@ -47,6 +47,9 @@ export const networkConfig = {
         gasPriceTiers: [50, 100, 150, 200, 250, 300],
       },
       supportsBridgeChainId: false,
+      deploymentBlock: 0,
+      useBridgeVault: true,
+      vaultContractAddress: "",
     },
     "11155111": {
       name: "Ethereum Sepolia",
@@ -62,6 +65,7 @@ export const networkConfig = {
         gasPriceTiers: [10, 20, 30, 40, 50, 60],
       },
       supportsBridgeChainId: false,
+      deploymentBlock: 0,
     },
     "97": {
       name: "BSC Testnet",
@@ -77,10 +81,12 @@ export const networkConfig = {
         gasPriceTiers: [5, 10, 15, 20, 25, 30],
       },
       supportsBridgeChainId: true,
+      deploymentBlock: 0,
     },
   },
   defaultChain: 80002,
   secondaryChain: 97, // It would be LIBERDUS_CHAIN_ID when Liberdus Mainnet is live
+  enableLiberdusNetwork: false,
   liberdusNetworkId:
     "7440f5161ffc77eed9ee91d6fbb406083192d1fe4d7e64b2f0814c0e067dcab4",
 };
@@ -139,6 +145,28 @@ export const supportsBridgeChainId = (chainId: number): boolean => {
   if (!chainId) return false;
   const config = networkConfig.supportedChains[chainId.toString()];
   return config?.supportsBridgeChainId ?? false;
+};
+
+// Helper function to check if chain uses vault contract for bridging
+export const isVaultChain = (chainId: number): boolean => {
+  if (!chainId) return false;
+  const config = networkConfig.supportedChains[chainId.toString()];
+  return config?.useBridgeVault === true;
+};
+
+// Helper function to get vault contract address for a chain (null if not a vault chain or not configured)
+export const getVaultContractAddress = (chainId: number): string | null => {
+  if (!chainId) return null;
+  const config = networkConfig.supportedChains[chainId.toString()];
+  if (config?.useBridgeVault && config.vaultContractAddress) {
+    return config.vaultContractAddress;
+  }
+  return null;
+};
+
+// Helper function to check if Liberdus Network is enabled as bridge destination
+export const isLiberdusNetworkEnabled = (): boolean => {
+  return networkConfig.enableLiberdusNetwork;
 };
 
 // Liberdus network chain ID (matches DEFAULT_CHAIN_ID in the token contract)
