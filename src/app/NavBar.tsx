@@ -188,6 +188,18 @@ export default function NavBar({ children }: { children: React.ReactNode }) {
             >
               Bridge Txns
             </div>
+            <div
+              style={navItemStyle}
+              onClick={() => router.push("/multisig")}
+              onMouseEnter={(e) =>
+                Object.assign(e.currentTarget.style, navItemHoverStyle)
+              }
+              onMouseLeave={(e) =>
+                Object.assign(e.currentTarget.style, navItemStyle)
+              }
+            >
+              Multisig
+            </div>
           </div>
 
           {/* Right Side - Network & Wallet */}
