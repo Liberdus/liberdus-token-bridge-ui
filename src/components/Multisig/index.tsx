@@ -1,13 +1,10 @@
 "use client";
 
+import "react-toastify/dist/ReactToastify.css";
 import { useEffect, useState, useCallback } from "react";
 import { ethers } from "ethers";
 import { useAccount, useSwitchChain } from "wagmi";
-import {
-  wagmiConfig,
-  isSupportedChain,
-  networkConfig,
-} from "@/app/wagmi";
+import { wagmiConfig, isSupportedChain, networkConfig } from "@/app/wagmi";
 
 // Resolve contract address by type from networkConfig, independent of connected chain
 function resolveAddressByType(type: ContractType): string {
@@ -148,6 +145,8 @@ function Multisig() {
     distributeAmount: "",
     bridgeEnabled: true,
   });
+  const [onChainValues, setOnChainValues] =
+    useState<Partial<CreateFormData> | null>(null);
   const [showPendingOnly, setShowPendingOnly] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -215,9 +214,15 @@ function Multisig() {
 
   // Sync signer when isConnected changes
   useEffect(() => {
-    if (!isConnected) { setSigner(null); return; }
+    if (!isConnected) {
+      setSigner(null);
+      return;
+    }
     if (provider) {
-      provider.getSigner().then(setSigner).catch(() => {});
+      provider
+        .getSigner()
+        .then(setSigner)
+        .catch(() => {});
     }
   }, [isConnected, provider]);
 
@@ -257,9 +262,7 @@ function Multisig() {
           contract.owner(),
           contract.isSigner(signer.address),
         ]);
-        setIsOwner(
-          ownerAddr.toLowerCase() === signer.address.toLowerCase()
-        );
+        setIsOwner(ownerAddr.toLowerCase() === signer.address.toLowerCase());
         setIsSigner(signerStatus);
       } catch {
         setIsOwner(false);
@@ -281,21 +284,18 @@ function Multisig() {
         contract.queryFilter(
           contract.filters.OperationRequested(),
           fromBlock,
-          "latest"
+          "latest",
         ),
         contract.queryFilter(
           contract.filters.OperationExecuted(),
           fromBlock,
-          "latest"
+          "latest",
         ),
         signer?.address
           ? contract.queryFilter(
-              contract.filters.SignatureSubmitted(
-                null,
-                signer.address
-              ),
+              contract.filters.SignatureSubmitted(null, signer.address),
               fromBlock,
-              "latest"
+              "latest",
             )
           : Promise.resolve([]),
       ]);
@@ -307,7 +307,7 @@ function Multisig() {
             data: l.data,
           });
           return parsed?.args[0] as string;
-        })
+        }),
       );
 
       const signedIds = new Set(
@@ -317,7 +317,7 @@ function Multisig() {
             data: l.data,
           });
           return parsed?.args[0] as string;
-        })
+        }),
       );
 
       const now = Math.floor(Date.now() / 1000);
@@ -396,6 +396,7 @@ function Multisig() {
 
   // Pre-populate form fields with current on-chain values when operation type changes
   useEffect(() => {
+    setOnChainValues(null);
     async function prefillCurrentValues() {
       if (!contract) return;
       try {
@@ -403,6 +404,7 @@ function Multisig() {
           case "SetBridgeInCaller": {
             const current = await contract.bridgeInCaller();
             setFormData((prev) => ({ ...prev, callerAddress: current }));
+            setOnChainValues({ callerAddress: current });
             break;
           }
           case "SetBridgeInLimits": {
@@ -410,29 +412,33 @@ function Multisig() {
               contract.maxBridgeInAmount(),
               contract.bridgeInCooldown(),
             ]);
+            const maxAmtStr = ethers.formatEther(maxAmt);
+            const cooldownStr = cooldown.toString();
             setFormData((prev) => ({
               ...prev,
-              maxAmount: ethers.formatEther(maxAmt),
-              cooldown: cooldown.toString(),
+              maxAmount: maxAmtStr,
+              cooldown: cooldownStr,
             }));
+            setOnChainValues({ maxAmount: maxAmtStr, cooldown: cooldownStr });
             break;
           }
           case "SetBridgeOutAmount": {
             const maxAmt = await contract.maxBridgeOutAmount();
-            setFormData((prev) => ({
-              ...prev,
-              maxAmount: ethers.formatEther(maxAmt),
-            }));
+            const maxAmtStr = ethers.formatEther(maxAmt);
+            setFormData((prev) => ({ ...prev, maxAmount: maxAmtStr }));
+            setOnChainValues({ maxAmount: maxAmtStr });
             break;
           }
           case "SetBridgeOutEnabled": {
             const enabled = await contract.bridgeOutEnabled();
             setFormData((prev) => ({ ...prev, bridgeEnabled: enabled }));
+            setOnChainValues({ bridgeEnabled: enabled });
             break;
           }
           case "SetBridgeInEnabled": {
             const enabled = await contract.bridgeInEnabled();
             setFormData((prev) => ({ ...prev, bridgeEnabled: enabled }));
+            setOnChainValues({ bridgeEnabled: enabled });
             break;
           }
         }
@@ -445,10 +451,9 @@ function Multisig() {
 
   // Build calldata for requestOperation
   function buildRequestArgs(
-    opName: string
+    opName: string,
   ): [number, string, bigint, string] | null {
-    const opType =
-      currentOpTypes.find((o) => o.name === opName)?.value ?? 0;
+    const opType = currentOpTypes.find((o) => o.name === opName)?.value ?? 0;
     const zero = ethers.ZeroAddress;
 
     switch (opName) {
@@ -489,7 +494,7 @@ function Multisig() {
         const cooldown = BigInt(formData.cooldown);
         const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
           ["uint256"],
-          [cooldown]
+          [cooldown],
         );
         return [opType, zero, maxAmt, encoded];
       }
@@ -520,7 +525,7 @@ function Multisig() {
       case "SetBridgeOutEnabled": {
         const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
           ["bool"],
-          [formData.bridgeEnabled]
+          [formData.bridgeEnabled],
         );
         return [opType, zero, BigInt(0), encoded];
       }
@@ -551,6 +556,46 @@ function Multisig() {
       toast.error("Connect wallet first");
       return;
     }
+    if (onChainValues !== null) {
+      let unchanged = false;
+      try {
+        switch (selectedOpName) {
+          case "SetBridgeInCaller":
+            unchanged =
+              !!onChainValues.callerAddress &&
+              formData.callerAddress.toLowerCase() ===
+                onChainValues.callerAddress.toLowerCase();
+            break;
+          case "SetBridgeInLimits":
+            unchanged =
+              !!onChainValues.maxAmount &&
+              !!onChainValues.cooldown &&
+              ethers.parseEther(formData.maxAmount) ===
+                ethers.parseEther(onChainValues.maxAmount) &&
+              formData.cooldown.trim() === onChainValues.cooldown.trim();
+            break;
+          case "SetBridgeOutAmount":
+            unchanged =
+              !!onChainValues.maxAmount &&
+              ethers.parseEther(formData.maxAmount) ===
+                ethers.parseEther(onChainValues.maxAmount);
+            break;
+          case "SetBridgeInEnabled":
+          case "SetBridgeOutEnabled":
+            unchanged =
+              onChainValues.bridgeEnabled !== undefined &&
+              formData.bridgeEnabled === onChainValues.bridgeEnabled;
+            break;
+        }
+      } catch {
+        /* ignore -- buildRequestArgs will catch parse errors */
+      }
+      if (unchanged) {
+        toast.info("Value is already set to this -- no change needed");
+        return;
+      }
+    }
+
     const args = buildRequestArgs(selectedOpName);
     if (!args) return;
 
@@ -580,13 +625,11 @@ function Multisig() {
     setSigningId(op.operationId);
     try {
       const messageHash = await contract.getOperationHash(op.operationId);
-      const signature = await signer.signMessage(
-        ethers.getBytes(messageHash)
-      );
+      const signature = await signer.signMessage(ethers.getBytes(messageHash));
       const contractWithSigner = contract.connect(signer) as ethers.Contract;
       const tx = await contractWithSigner.submitSignature(
         op.operationId,
-        signature
+        signature,
       );
       toast.info("Signature submitted, waiting for confirmation...");
       await tx.wait();
@@ -789,7 +832,7 @@ function Multisig() {
                 >
                   {type}
                 </button>
-              )
+              ),
             )}
           </div>
 
@@ -872,9 +915,7 @@ function Multisig() {
                       ? colors.action.hover
                       : colors.gradients.primary,
                     border: `1px solid ${
-                      showCreateForm
-                        ? colors.border.subtle
-                        : "transparent"
+                      showCreateForm ? colors.border.subtle : "transparent"
                     }`,
                     borderRadius: "0.5rem",
                     color: showCreateForm
@@ -1168,7 +1209,11 @@ function Multisig() {
             </div>
 
             <div
-              style={{ display: "flex", justifyContent: "flex-end", marginTop: "1.25rem" }}
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: "1.25rem",
+              }}
             >
               <button
                 onClick={handleCreateOperation}
@@ -1180,9 +1225,7 @@ function Multisig() {
                     : colors.gradients.primary,
                   border: "none",
                   borderRadius: "0.5rem",
-                  color: isSubmitting
-                    ? colors.text.muted
-                    : colors.text.inverse,
+                  color: isSubmitting ? colors.text.muted : colors.text.inverse,
                   fontSize: "0.875rem",
                   fontWeight: "600",
                   cursor: isSubmitting ? "not-allowed" : "pointer",
@@ -1311,15 +1354,21 @@ function Multisig() {
                 color: colors.text.muted,
               }}
             >
-              <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem", opacity: 0.4 }}>
+              <div
+                style={{
+                  fontSize: "2.5rem",
+                  marginBottom: "0.75rem",
+                  opacity: 0.4,
+                }}
+              >
                 🔗
               </div>
               <p style={{ margin: 0 }}>
                 {!isConnected
                   ? "Connect wallet and select a network to view operations."
                   : !isChainSupported
-                  ? "Switch to a supported network."
-                  : "Enter a contract address to load operations."}
+                    ? "Switch to a supported network."
+                    : "Enter a contract address to load operations."}
               </p>
             </div>
           )}
@@ -1332,7 +1381,13 @@ function Multisig() {
                 color: colors.text.muted,
               }}
             >
-              <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem", opacity: 0.4 }}>
+              <div
+                style={{
+                  fontSize: "2.5rem",
+                  marginBottom: "0.75rem",
+                  opacity: 0.4,
+                }}
+              >
                 📋
               </div>
               <p style={{ margin: 0 }}>
@@ -1345,9 +1400,7 @@ function Multisig() {
 
           {!loading && contract && displayedOps.length > 0 && (
             <div style={{ overflowX: "auto" }}>
-              <table
-                style={{ width: "100%", borderCollapse: "collapse" }}
-              >
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: colors.background.input }}>
                     {[
@@ -1381,48 +1434,64 @@ function Multisig() {
                 <tbody>
                   {displayedOps.map((op) => {
                     const isPending = !op.executed && !op.isExpired;
-                    const canSign =
-                      isSigner && isPending && !op.hasSigned;
+                    const canSign = isSigner && isPending && !op.hasSigned;
                     const isSigning = signingId === op.operationId;
 
                     const statusColor = op.executed
                       ? colors.status.success
                       : op.isExpired
-                      ? colors.status.error
-                      : colors.status.warning;
+                        ? colors.status.error
+                        : colors.status.warning;
                     const statusBg = op.executed
                       ? colors.status.successBg
                       : op.isExpired
-                      ? colors.status.errorBg
-                      : colors.status.warningBg;
+                        ? colors.status.errorBg
+                        : colors.status.warningBg;
                     const statusBorder = op.executed
                       ? colors.status.successBorder
                       : op.isExpired
-                      ? colors.status.errorBorder
-                      : colors.status.warningBorder;
+                        ? colors.status.errorBorder
+                        : colors.status.warningBorder;
                     const statusLabel = op.executed
                       ? "Executed"
                       : op.isExpired
-                      ? "Expired"
-                      : "Pending";
+                        ? "Expired"
+                        : "Pending";
 
                     // Human-readable params based on operation type
                     const paramParts: string[] = [];
                     switch (op.opTypeName) {
                       case "SetBridgeInCaller":
                         if (op.target && op.target !== ethers.ZeroAddress)
-                          paramParts.push(`caller: ${formatAddress(op.target)}`);
+                          paramParts.push(
+                            `caller: ${formatAddress(op.target)}`,
+                          );
                         break;
                       case "SetBridgeInLimits":
                         if (op.value > BigInt(0)) {
-                          try { paramParts.push(`maxAmount: ${ethers.formatEther(op.value)} LIB`); }
-                          catch { paramParts.push(`maxAmount: ${op.value.toString()}`); }
+                          try {
+                            paramParts.push(
+                              `maxAmount: ${ethers.formatEther(op.value)} LIB`,
+                            );
+                          } catch {
+                            paramParts.push(
+                              `maxAmount: ${op.value.toString()}`,
+                            );
+                          }
                         }
                         if (op.data && op.data !== "0x") {
                           try {
-                            const [cooldown] = ethers.AbiCoder.defaultAbiCoder().decode(["uint256"], op.data);
-                            paramParts.push(`cooldown: ${cooldown.toString()}s`);
-                          } catch { /* ignore decode errors */ }
+                            const [cooldown] =
+                              ethers.AbiCoder.defaultAbiCoder().decode(
+                                ["uint256"],
+                                op.data,
+                              );
+                            paramParts.push(
+                              `cooldown: ${cooldown.toString()}s`,
+                            );
+                          } catch {
+                            /* ignore decode errors */
+                          }
                         }
                         break;
                       case "UpdateSigner":
@@ -1430,38 +1499,66 @@ function Multisig() {
                           paramParts.push(`old: ${formatAddress(op.target)}`);
                         if (op.value > BigInt(0)) {
                           try {
-                            const newSigner = "0x" + op.value.toString(16).padStart(40, "0");
+                            const newSigner =
+                              "0x" + op.value.toString(16).padStart(40, "0");
                             paramParts.push(`new: ${formatAddress(newSigner)}`);
-                          } catch { paramParts.push(`new: ${op.value.toString()}`); }
+                          } catch {
+                            paramParts.push(`new: ${op.value.toString()}`);
+                          }
                         }
                         break;
                       case "SetBridgeOutAmount":
                         if (op.value > BigInt(0)) {
-                          try { paramParts.push(`maxAmount: ${ethers.formatEther(op.value)} LIB`); }
-                          catch { paramParts.push(`maxAmount: ${op.value.toString()}`); }
+                          try {
+                            paramParts.push(
+                              `maxAmount: ${ethers.formatEther(op.value)} LIB`,
+                            );
+                          } catch {
+                            paramParts.push(
+                              `maxAmount: ${op.value.toString()}`,
+                            );
+                          }
                         }
                         break;
                       case "SetBridgeInEnabled":
                       case "SetBridgeOutEnabled":
                         if (op.data && op.data !== "0x") {
                           try {
-                            const [enabled] = ethers.AbiCoder.defaultAbiCoder().decode(["bool"], op.data);
-                            paramParts.push(`enabled: ${enabled ? "true" : "false"}`);
-                          } catch { /* ignore decode errors */ }
+                            const [enabled] =
+                              ethers.AbiCoder.defaultAbiCoder().decode(
+                                ["bool"],
+                                op.data,
+                              );
+                            paramParts.push(
+                              `enabled: ${enabled ? "true" : "false"}`,
+                            );
+                          } catch {
+                            /* ignore decode errors */
+                          }
                         }
                         break;
                       case "Burn":
                         if (op.value > BigInt(0)) {
-                          try { paramParts.push(`amount: ${ethers.formatEther(op.value)} LIB`); }
-                          catch { paramParts.push(`amount: ${op.value.toString()}`); }
+                          try {
+                            paramParts.push(
+                              `amount: ${ethers.formatEther(op.value)} LIB`,
+                            );
+                          } catch {
+                            paramParts.push(`amount: ${op.value.toString()}`);
+                          }
                         }
                         break;
                       case "DistributeTokens":
                         if (op.target && op.target !== ethers.ZeroAddress)
                           paramParts.push(`to: ${formatAddress(op.target)}`);
                         if (op.value > BigInt(0)) {
-                          try { paramParts.push(`amount: ${ethers.formatEther(op.value)} LIB`); }
-                          catch { paramParts.push(`amount: ${op.value.toString()}`); }
+                          try {
+                            paramParts.push(
+                              `amount: ${ethers.formatEther(op.value)} LIB`,
+                            );
+                          } catch {
+                            paramParts.push(`amount: ${op.value.toString()}`);
+                          }
                         }
                         break;
                       default:
@@ -1516,11 +1613,11 @@ function Multisig() {
                             maxWidth: "200px",
                           }}
                         >
-                          {paramParts.length > 0
-                            ? paramParts.map((p, i) => (
-                                <div key={i}>{p}</div>
-                              ))
-                            : <span style={{ color: colors.text.muted }}>—</span>}
+                          {paramParts.length > 0 ? (
+                            paramParts.map((p, i) => <div key={i}>{p}</div>)
+                          ) : (
+                            <span style={{ color: colors.text.muted }}>—</span>
+                          )}
                         </td>
                         <td
                           style={{
@@ -1629,9 +1726,7 @@ function Multisig() {
                                   : colors.text.inverse,
                                 fontSize: "0.8rem",
                                 fontWeight: "600",
-                                cursor: isSigning
-                                  ? "not-allowed"
-                                  : "pointer",
+                                cursor: isSigning ? "not-allowed" : "pointer",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: "0.375rem",
@@ -1643,8 +1738,7 @@ function Multisig() {
                                   style={{
                                     width: "0.75rem",
                                     height: "0.75rem",
-                                    border:
-                                      "2px solid rgba(255,255,255,0.3)",
+                                    border: "2px solid rgba(255,255,255,0.3)",
                                     borderTop: "2px solid white",
                                     borderRadius: "50%",
                                     animation: "spin 1s linear infinite",
@@ -1713,11 +1807,19 @@ function Multisig() {
 
       <style jsx>{`
         @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
         @keyframes ping {
-          75%, 100% { transform: scale(2); opacity: 0; }
+          75%,
+          100% {
+            transform: scale(2);
+            opacity: 0;
+          }
         }
         .op-row:nth-child(even) td {
           background: ${colors.base.slate50};
