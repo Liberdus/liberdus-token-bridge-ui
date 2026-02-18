@@ -32,13 +32,14 @@ export const localchain = {
 
 // Network configuration with all chain details
 export const networkConfig = {
+  coordinatorUrl: "http://127.0.0.1:8000",
   supportedChains: {
     "80002": {
       name: "Polygon Amoy Testnet",
       chainId: 80002,
       rpcUrl: "https://polygon-amoy.infura.io/v3/",
       wsUrl: "wss://polygon-amoy.infura.io/ws/v3/",
-      contractAddress: "0x5b599Dbd52658a0Bd52BB8f1Ee52c4dB81c9Bf54",
+      contractAddress: "0xD5409531c857AfD1b2fF6Cd527038e9981ef4863",
       tssSenderAddress: "0x35576352AABCBCe19AeCE1fFD376f7C49F022706",
       bridgeAddress:
         "22443e34ed93d88caa380f76d8e072998990d221000000000000000000000000",
@@ -49,7 +50,7 @@ export const networkConfig = {
       supportsBridgeChainId: false,
       deploymentBlock: 34049083,
       useBridgeVault: true,
-      vaultContractAddress: "0x356e3B2561A2A097EBC362cf85cE9F9166B3D0aE",
+      vaultContractAddress: "0x72F14632718FC4CFD016F744ACAf276230eB3080",
       vaultDeploymentBlock: 34049182,
     },
     "97": {
@@ -57,7 +58,7 @@ export const networkConfig = {
       chainId: 97,
       rpcUrl: "https://bsc-testnet.infura.io/v3/",
       wsUrl: "wss://bsc-testnet.publicnode.com",
-      contractAddress: "0xaA8454C65A6d9431d746268F012220c94c717bbc",
+      contractAddress: "0x909f519083594eCf3DD1f7Fbe09e08bB0343BD84",
       tssSenderAddress: "0x43178f0E762433E8Aa0E50EB6d691a3254f957EE",
       bridgeAddress:
         "79309245d2bed1cc8efca12f3dbd2e64ab9591c0000000000000000000000000",
@@ -177,6 +178,5 @@ export const wagmiConfig = getDefaultConfig({
 // Legacy exports for backward compatibility
 export const contractAddress =
   networkConfig.supportedChains["80002"].contractAddress;
-export const coordinatorServer = "http://dev.liberdus.com:8000";
 export const bridgeInUsername = "liberdusbridge";
 export const liberdusExplorer = "https://dev.liberdus.com:3035/tx/";

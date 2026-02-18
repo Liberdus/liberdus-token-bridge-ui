@@ -51,14 +51,16 @@ const OP_TYPES: Record<ContractType, { value: number; name: string }[]> = {
     { value: 2, name: "SetBridgeInCaller" },
     { value: 3, name: "SetBridgeInLimits" },
     { value: 4, name: "UpdateSigner" },
+    { value: 5, name: "SetBridgeInEnabled" },
+    { value: 6, name: "SetBridgeOutEnabled" },
   ],
   Vault: [
     { value: 0, name: "Pause" },
     { value: 1, name: "Unpause" },
-    { value: 2, name: "SetBridgeInCaller" },
-    { value: 3, name: "SetBridgeInLimits" },
-    { value: 4, name: "UpdateSigner" },
-    { value: 5, name: "RelinquishTokens" },
+    { value: 2, name: "SetBridgeOutAmount" },
+    { value: 3, name: "UpdateSigner" },
+    { value: 4, name: "RelinquishTokens" },
+    { value: 5, name: "SetBridgeOutEnabled" },
   ],
 };
 
@@ -94,6 +96,7 @@ interface CreateFormData {
   burnAmount: string;
   distributeRecipient: string;
   distributeAmount: string;
+  bridgeEnabled: boolean;
 }
 
 const NO_FIELDS_OPS: Record<ContractType, string[]> = {
@@ -101,6 +104,8 @@ const NO_FIELDS_OPS: Record<ContractType, string[]> = {
   Secondary: ["Pause", "Unpause"],
   Vault: ["Pause", "Unpause", "RelinquishTokens"],
 };
+
+const BOOL_OPS = ["SetBridgeInEnabled", "SetBridgeOutEnabled"];
 
 function formatAddress(addr: string) {
   if (!addr || addr === ethers.ZeroAddress) return "—";
@@ -141,6 +146,7 @@ function Multisig() {
     burnAmount: "",
     distributeRecipient: "",
     distributeAmount: "",
+    bridgeEnabled: true,
   });
   const [showPendingOnly, setShowPendingOnly] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -388,6 +394,55 @@ function Multisig() {
     setFormData((prev) => ({ ...prev, opType: 0 }));
   }, [contractType]);
 
+  // Pre-populate form fields with current on-chain values when operation type changes
+  useEffect(() => {
+    async function prefillCurrentValues() {
+      if (!contract) return;
+      try {
+        switch (selectedOpName) {
+          case "SetBridgeInCaller": {
+            const current = await contract.bridgeInCaller();
+            setFormData((prev) => ({ ...prev, callerAddress: current }));
+            break;
+          }
+          case "SetBridgeInLimits": {
+            const [maxAmt, cooldown] = await Promise.all([
+              contract.maxBridgeInAmount(),
+              contract.bridgeInCooldown(),
+            ]);
+            setFormData((prev) => ({
+              ...prev,
+              maxAmount: ethers.formatEther(maxAmt),
+              cooldown: cooldown.toString(),
+            }));
+            break;
+          }
+          case "SetBridgeOutAmount": {
+            const maxAmt = await contract.maxBridgeOutAmount();
+            setFormData((prev) => ({
+              ...prev,
+              maxAmount: ethers.formatEther(maxAmt),
+            }));
+            break;
+          }
+          case "SetBridgeOutEnabled": {
+            const enabled = await contract.bridgeOutEnabled();
+            setFormData((prev) => ({ ...prev, bridgeEnabled: enabled }));
+            break;
+          }
+          case "SetBridgeInEnabled": {
+            const enabled = await contract.bridgeInEnabled();
+            setFormData((prev) => ({ ...prev, bridgeEnabled: enabled }));
+            break;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to prefill current values:", err);
+      }
+    }
+    prefillCurrentValues();
+  }, [selectedOpName, contract]);
+
   // Build calldata for requestOperation
   function buildRequestArgs(
     opName: string
@@ -450,6 +505,24 @@ function Multisig() {
         }
         const newSignerAsUint = BigInt(formData.newSigner);
         return [opType, formData.oldSigner, newSignerAsUint, "0x"];
+      }
+
+      case "SetBridgeOutAmount": {
+        if (!formData.maxAmount || parseFloat(formData.maxAmount) <= 0) {
+          toast.error("Enter a valid max amount");
+          return null;
+        }
+        const maxAmt = ethers.parseEther(formData.maxAmount);
+        return [opType, zero, maxAmt, "0x"];
+      }
+
+      case "SetBridgeInEnabled":
+      case "SetBridgeOutEnabled": {
+        const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["bool"],
+          [formData.bridgeEnabled]
+        );
+        return [opType, zero, BigInt(0), encoded];
       }
 
       case "DistributeTokens": {
@@ -964,6 +1037,43 @@ function Multisig() {
                 </>
               )}
 
+              {selectedOpName === "SetBridgeOutAmount" && (
+                <div>
+                  <label style={labelStyle}>Max Bridge-Out Amount (LIB)</label>
+                  <input
+                    type="text"
+                    value={formData.maxAmount}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        maxAmount: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. 10000"
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+
+              {BOOL_OPS.includes(selectedOpName) && (
+                <div>
+                  <label style={labelStyle}>Enable / Disable</label>
+                  <select
+                    value={formData.bridgeEnabled ? "true" : "false"}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        bridgeEnabled: e.target.value === "true",
+                      }))
+                    }
+                    style={inputStyle}
+                  >
+                    <option value="true">Enable</option>
+                    <option value="false">Disable</option>
+                  </select>
+                </div>
+              )}
+
               {selectedOpName === "UpdateSigner" && (
                 <>
                   <div>
@@ -1323,6 +1433,21 @@ function Multisig() {
                             const newSigner = "0x" + op.value.toString(16).padStart(40, "0");
                             paramParts.push(`new: ${formatAddress(newSigner)}`);
                           } catch { paramParts.push(`new: ${op.value.toString()}`); }
+                        }
+                        break;
+                      case "SetBridgeOutAmount":
+                        if (op.value > BigInt(0)) {
+                          try { paramParts.push(`maxAmount: ${ethers.formatEther(op.value)} LIB`); }
+                          catch { paramParts.push(`maxAmount: ${op.value.toString()}`); }
+                        }
+                        break;
+                      case "SetBridgeInEnabled":
+                      case "SetBridgeOutEnabled":
+                        if (op.data && op.data !== "0x") {
+                          try {
+                            const [enabled] = ethers.AbiCoder.defaultAbiCoder().decode(["bool"], op.data);
+                            paramParts.push(`enabled: ${enabled ? "true" : "false"}`);
+                          } catch { /* ignore decode errors */ }
                         }
                         break;
                       case "Burn":

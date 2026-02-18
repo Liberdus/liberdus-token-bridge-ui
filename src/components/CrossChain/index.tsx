@@ -417,7 +417,10 @@ function CrossChain() {
       return;
     }
     try {
-      const maxAmount = await bridgeContract.maxBridgeInAmount();
+      // Vault contract exposes maxBridgeOutAmount; regular token contracts expose maxBridgeInAmount
+      const maxAmount = vaultContract
+        ? await vaultContract.maxBridgeOutAmount()
+        : await contract!.maxBridgeInAmount();
       setMaxBridgeLimit(ethers.formatEther(maxAmount));
     } catch (error) {
       console.error("Error fetching max bridge limit:", error);

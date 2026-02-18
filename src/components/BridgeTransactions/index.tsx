@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { coordinatorServer, getChainName, getExplorerUrl, LIBERDUS_CHAIN_ID } from "@/app/wagmi";
+import { networkConfig, getChainName, getExplorerUrl, LIBERDUS_CHAIN_ID } from "@/app/wagmi";
 import { ethers } from "ethers";
 import { toEthereumAddress } from "@/utils/transformAddress";
 import moment from "moment";
@@ -95,7 +95,7 @@ function BridgeTransactions() {
     setTransactions([]);
     setTotalTransactions(0);
 
-    let txURL = `${coordinatorServer}/transaction`;
+    let txURL = `${networkConfig.coordinatorUrl}/transaction`;
     if (txId) {
       txURL += `?txId=${txId}`;
     } else if (sender) {
