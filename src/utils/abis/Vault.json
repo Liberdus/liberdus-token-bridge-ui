@@ -50,16 +50,6 @@
       "type": "error"
     },
     {
-      "inputs": [],
-      "name": "EnforcedPause",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ExpectedPause",
-      "type": "error"
-    },
-    {
       "inputs": [
         {
           "internalType": "address",
@@ -168,12 +158,6 @@
           "internalType": "uint256",
           "name": "timestamp",
           "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "destinationChainId",
-          "type": "uint256"
         }
       ],
       "name": "BridgedOut",
@@ -276,19 +260,6 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "Paused",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
           "indexed": true,
           "internalType": "bytes32",
           "name": "operationId",
@@ -383,26 +354,13 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "Unpaused",
-      "type": "event"
-    },
-    {
-      "inputs": [],
-      "name": "DEFAULT_CHAIN_ID",
-      "outputs": [
-        {
           "internalType": "uint256",
-          "name": "",
+          "name": "timestamp",
           "type": "uint256"
         }
       ],
-      "stateMutability": "view",
-      "type": "function"
+      "name": "VaultHalted",
+      "type": "event"
     },
     {
       "inputs": [],
@@ -428,34 +386,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "targetAddress",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_chainId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "destinationChainId",
-          "type": "uint256"
-        }
-      ],
-      "name": "bridgeOut",
-      "outputs": [],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -547,6 +477,19 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "halted",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -673,19 +616,6 @@
           "internalType": "address",
           "name": "",
           "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "paused",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
         }
       ],
       "stateMutability": "view",

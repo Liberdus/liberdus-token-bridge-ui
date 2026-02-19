@@ -50,15 +50,15 @@ export const networkConfig = {
       supportsBridgeChainId: false,
       deploymentBlock: 34134604,
       useBridgeVault: true,
-      vaultContractAddress: "0x72F14632718FC4CFD016F744ACAf276230eB3080",
-      vaultDeploymentBlock: 34134630,
+      vaultContractAddress: "0x1469f20C91da50BF9Cc82d7cFB9A8D9EF1dEe86a",
+      vaultDeploymentBlock: 34186958,
     },
     "97": {
       name: "BSC Testnet",
       chainId: 97,
       rpcUrl: "https://bsc-testnet.infura.io/v3/",
       wsUrl: "wss://bsc-testnet.publicnode.com",
-      contractAddress: "0x909f519083594eCf3DD1f7Fbe09e08bB0343BD84",
+      contractAddress: "0xA8Da42C5C915384e5d0938A0CbeC5720af736E27",
       tssSenderAddress: "0x43178f0E762433E8Aa0E50EB6d691a3254f957EE",
       bridgeAddress:
         "79309245d2bed1cc8efca12f3dbd2e64ab9591c0000000000000000000000000",
@@ -67,7 +67,7 @@ export const networkConfig = {
         gasPriceTiers: [5, 10, 15, 20, 25, 30],
       },
       supportsBridgeChainId: true,
-      deploymentBlock: 91072449,
+      deploymentBlock: 91260194,
     },
   },
   defaultChain: 80002,
@@ -176,7 +176,5 @@ export const wagmiConfig = getDefaultConfig({
 });
 
 // Legacy exports for backward compatibility
-export const contractAddress =
-  networkConfig.supportedChains["80002"].contractAddress;
 export const bridgeInUsername = "liberdusbridge";
 export const liberdusExplorer = "https://dev.liberdus.com:3035/tx/";

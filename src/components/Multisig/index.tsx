@@ -43,21 +43,17 @@ const OP_TYPES: Record<ContractType, { value: number; name: string }[]> = {
     { value: 8, name: "DistributeTokens" },
   ],
   Secondary: [
-    { value: 0, name: "Pause" },
-    { value: 1, name: "Unpause" },
-    { value: 2, name: "SetBridgeInCaller" },
-    { value: 3, name: "SetBridgeInLimits" },
-    { value: 4, name: "UpdateSigner" },
-    { value: 5, name: "SetBridgeInEnabled" },
-    { value: 6, name: "SetBridgeOutEnabled" },
+    { value: 0, name: "SetBridgeInCaller" },
+    { value: 1, name: "SetBridgeInLimits" },
+    { value: 2, name: "UpdateSigner" },
+    { value: 3, name: "SetBridgeInEnabled" },
+    { value: 4, name: "SetBridgeOutEnabled" },
   ],
   Vault: [
-    { value: 0, name: "Pause" },
-    { value: 1, name: "Unpause" },
-    { value: 2, name: "SetBridgeOutAmount" },
-    { value: 3, name: "UpdateSigner" },
-    { value: 4, name: "RelinquishTokens" },
-    { value: 5, name: "SetBridgeOutEnabled" },
+    { value: 0, name: "SetBridgeOutAmount" },
+    { value: 1, name: "UpdateSigner" },
+    { value: 2, name: "SetBridgeOutEnabled" },
+    { value: 3, name: "RelinquishTokens" },
   ],
 };
 
@@ -98,8 +94,8 @@ interface CreateFormData {
 
 const NO_FIELDS_OPS: Record<ContractType, string[]> = {
   Primary: ["Mint", "PostLaunch", "Pause", "Unpause"],
-  Secondary: ["Pause", "Unpause"],
-  Vault: ["Pause", "Unpause", "RelinquishTokens"],
+  Secondary: [],
+  Vault: ["RelinquishTokens"],
 };
 
 const BOOL_OPS = ["SetBridgeInEnabled", "SetBridgeOutEnabled"];

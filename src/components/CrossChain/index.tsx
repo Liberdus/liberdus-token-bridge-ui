@@ -751,23 +751,11 @@ function CrossChain() {
         toast.info("Initiating bridge transaction...");
         const vaultWithSigner = vaultContract!.connect(signer) as ethers.Contract;
 
-        let tx;
-        if (enableLiberdusNetwork) {
-          // To Liberdus Network: 3-param bridgeOut
-          tx = await vaultWithSigner["bridgeOut(uint256,address,uint256)"](
-            bridgeAmount,
-            signer.address,
-            chainId
-          );
-        } else {
-          // To secondaryChain (e.g. BSC): 4-param bridgeOut with destination
-          tx = await vaultWithSigner["bridgeOut(uint256,address,uint256,uint256)"](
-            bridgeAmount,
-            signer.address,
-            chainId,
-            networkConfig.secondaryChain
-          );
-        }
+        const tx = await vaultWithSigner["bridgeOut(uint256,address,uint256)"](
+          bridgeAmount,
+          signer.address,
+          chainId
+        );
 
         if (tx == null) throw new Error("Transaction not submitted");
 
@@ -796,17 +784,13 @@ function CrossChain() {
         // Regular (non-vault) bridge
         const contractWithSigner = contract.connect(signer) as ethers.Contract;
 
-        // In fixed mode (non-Liberdus), use destination chain param if supported
-        const useDestinationParam = !enableLiberdusNetwork && supportsBridgeChainId(chainId!);
-        const bridgeOutFn = useDestinationParam
-          ? contractWithSigner["bridgeOut(uint256,address,uint256,uint256)"]
-          : contractWithSigner["bridgeOut(uint256,address,uint256)"];
-
         toast.info("Initiating bridge transaction...");
 
-        const tx = useDestinationParam
-          ? await bridgeOutFn(bridgeAmount, signer.address, chainId, networkConfig.secondaryChain)
-          : await bridgeOutFn(bridgeAmount, signer.address, chainId);
+        const tx = await contractWithSigner["bridgeOut(uint256,address,uint256)"](
+          bridgeAmount,
+          signer.address,
+          chainId
+        );
 
         if (tx == null) throw new Error("Transaction not submitted");
 
