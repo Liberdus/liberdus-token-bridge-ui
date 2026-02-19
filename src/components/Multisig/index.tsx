@@ -10,16 +10,16 @@ import { wagmiConfig, isSupportedChain, networkConfig } from "@/app/wagmi";
 function resolveAddressByType(type: ContractType): string {
   const chains = networkConfig.supportedChains;
   const defaultCfg = chains[networkConfig.defaultChain.toString()];
-  const secondaryCfg = chains[networkConfig.secondaryChain.toString()];
+  const secondaryCfg = chains[networkConfig.secondaryChainConfig.chainId.toString()];
   if (type === "Primary") return defaultCfg?.contractAddress ?? "";
   if (type === "Secondary") return secondaryCfg?.contractAddress ?? "";
-  // Vault lives on the default chain
-  return defaultCfg?.vaultContractAddress ?? defaultCfg?.contractAddress ?? "";
+  // Vault lives on the default chain; use the top-level vaultChain config
+  return networkConfig.vaultChain?.contractAddress ?? defaultCfg?.contractAddress ?? "";
 }
 
 // Resolve the target chain ID for a given contract type
 function resolveChainByType(type: ContractType): number {
-  if (type === "Secondary") return networkConfig.secondaryChain;
+  if (type === "Secondary") return networkConfig.secondaryChainConfig.chainId;
   return networkConfig.defaultChain; // Primary and Vault both live on the default chain
 }
 import { toast } from "react-toastify";

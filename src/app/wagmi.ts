@@ -10,29 +10,39 @@ import {
   bscTestnet,
 } from "wagmi/chains";
 
-export const localchain = {
-  id: 31337, // Chain ID for Hardhat
-  name: "Localhost",
-  network: "localhost",
-  nativeCurrency: {
-    name: "Ether",
-    symbol: "ETH",
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: ["http://127.0.0.1:8545"], // Change this to your local RPC URL if needed
-    },
-  },
-  blockExplorers: {
-    default: { name: "Etherscan", url: "http://127.0.0.1:8545" }, // No block explorer for localhost
-  },
-  testnet: true, // Mark it as a testnet
-};
-
 // Network configuration with all chain details
 export const networkConfig = {
   coordinatorUrl: "http://127.0.0.1:8000",
+  vaultChain: {
+    name: "Polygon Amoy Testnet",
+    chainId: 80002,
+    rpcUrl: "https://polygon-amoy.infura.io/v3/",
+    wsUrl: "wss://polygon-amoy.infura.io/ws/v3/",
+    contractAddress: "0x1469f20C91da50BF9Cc82d7cFB9A8D9EF1dEe86a",
+    tssSenderAddress: "0x35576352AABCBCe19AeCE1fFD376f7C49F022706",
+    bridgeAddress:
+      "22443e34ed93d88caa380f76d8e072998990d221000000000000000000000000",
+    gasConfig: {
+      gasLimit: 200000,
+      gasPriceTiers: [50, 100, 150, 200, 250, 300],
+    },
+    deploymentBlock: 34186958,
+  },
+  secondaryChainConfig: {
+    name: "BSC Testnet",
+    chainId: 97,
+    rpcUrl: "https://bsc-testnet.infura.io/v3/",
+    wsUrl: "wss://bsc-testnet.publicnode.com",
+    contractAddress: "0xA8Da42C5C915384e5d0938A0CbeC5720af736E27",
+    tssSenderAddress: "0x43178f0E762433E8Aa0E50EB6d691a3254f957EE",
+    bridgeAddress:
+      "79309245d2bed1cc8efca12f3dbd2e64ab9591c0000000000000000000000000",
+    gasConfig: {
+      gasLimit: 200000,
+      gasPriceTiers: [5, 10, 15, 20, 25, 30],
+    },
+    deploymentBlock: 91260194,
+  },
   supportedChains: {
     "80002": {
       name: "Polygon Amoy Testnet",
@@ -49,9 +59,6 @@ export const networkConfig = {
       },
       supportsBridgeChainId: false,
       deploymentBlock: 34134604,
-      useBridgeVault: true,
-      vaultContractAddress: "0x1469f20C91da50BF9Cc82d7cFB9A8D9EF1dEe86a",
-      vaultDeploymentBlock: 34186958,
     },
     "97": {
       name: "BSC Testnet",
@@ -71,7 +78,6 @@ export const networkConfig = {
     },
   },
   defaultChain: 80002,
-  secondaryChain: 97, // It would be LIBERDUS_CHAIN_ID when Liberdus Mainnet is live
   enableLiberdusNetwork: false,
   liberdusNetworkId:
     "7440f5161ffc77eed9ee91d6fbb406083192d1fe4d7e64b2f0814c0e067dcab4",
@@ -134,18 +140,23 @@ export const supportsBridgeChainId = (chainId: number): boolean => {
 };
 
 // Helper function to check if chain uses vault contract for bridging
+// When enableLiberdusNetwork is false, the vaultChain is used for bridging
 export const isVaultChain = (chainId: number): boolean => {
   if (!chainId) return false;
-  const config = networkConfig.supportedChains[chainId.toString()];
-  return config?.useBridgeVault === true;
+  return (
+    !networkConfig.enableLiberdusNetwork &&
+    networkConfig.vaultChain.chainId === chainId
+  );
 };
 
-// Helper function to get vault contract address for a chain (null if not a vault chain or not configured)
+// Helper function to get vault contract address for a chain (null if not the vault chain)
 export const getVaultContractAddress = (chainId: number): string | null => {
   if (!chainId) return null;
-  const config = networkConfig.supportedChains[chainId.toString()];
-  if (config?.useBridgeVault && config.vaultContractAddress) {
-    return config.vaultContractAddress;
+  if (
+    !networkConfig.enableLiberdusNetwork &&
+    networkConfig.vaultChain.chainId === chainId
+  ) {
+    return networkConfig.vaultChain.contractAddress;
   }
   return null;
 };

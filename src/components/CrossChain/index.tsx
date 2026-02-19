@@ -876,7 +876,7 @@ function CrossChain() {
   // Determine the "To" chain display name
   const toChainName = enableLiberdusNetwork
     ? "Liberdus Network"
-    : getChainName(networkConfig.secondaryChain);
+    : getChainName(networkConfig.secondaryChainConfig.chainId);
 
   return (
     <div
@@ -929,7 +929,7 @@ function CrossChain() {
             >
               {enableLiberdusNetwork
                 ? "Transfer LIB to Liberdus Network"
-                : `Transfer LIB from ${getChainName(networkConfig.defaultChain)} to ${getChainName(networkConfig.secondaryChain)}`}
+                : `Transfer LIB from ${getChainName(networkConfig.defaultChain)} to ${getChainName(networkConfig.secondaryChainConfig.chainId)}`}
             </p>
           </div>
 

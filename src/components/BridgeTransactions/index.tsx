@@ -14,12 +14,26 @@ export interface Transaction {
   type: TransactionType;
   txTimestamp: number;
   chainId: number;
-  bridgeChainId: number; // The chain on the other side of the bridge (Default: LIBERDUS_CHAIN_ID)
   status: TransactionStatus;
   receiptId: string;
   reason?: string | null; // Optional field for error reason
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Derive source chain ID from transaction type:
+//   BRIDGE_IN:    Liberdus → tx.chainId
+//   BRIDGE_OUT:   tx.chainId → Liberdus
+//   BRIDGE_VAULT: tx.chainId (vault) → secondaryChainConfig
+function getSourceChainId(tx: Transaction): number {
+  if (tx.type === TransactionType.BRIDGE_IN) return LIBERDUS_CHAIN_ID;
+  return tx.chainId;
+}
+
+function getDestChainId(tx: Transaction): number {
+  if (tx.type === TransactionType.BRIDGE_IN) return tx.chainId;
+  if (tx.type === TransactionType.BRIDGE_VAULT) return networkConfig.secondaryChainConfig.chainId;
+  return LIBERDUS_CHAIN_ID; // BRIDGE_OUT
 }
 
 export enum TransactionStatus {
@@ -32,14 +46,14 @@ export enum TransactionStatus {
 export enum TransactionType {
   BRIDGE_IN = 0, // COIN to TOKEN
   BRIDGE_OUT = 1, // TOKEN to COIN
-  BRIDGE_CROSS = 2, // TOKEN to TOKEN (EVM cross-chain)
+  BRIDGE_VAULT = 2, // VAULT to SECONDARY (vault chain → secondary EVM chain)
 }
 
 export function isTransactionType(value: unknown): value is TransactionType {
   return (
     value === TransactionType.BRIDGE_IN ||
     value === TransactionType.BRIDGE_OUT ||
-    value === TransactionType.BRIDGE_CROSS
+    value === TransactionType.BRIDGE_VAULT
   );
 }
 
@@ -150,7 +164,7 @@ function BridgeTransactions() {
       value: "type",
       label: "Bridge Type",
       placeholder:
-        "Enter bridge type... ( in: bridge in, out: bridge out, cross: cross chain )",
+        "Enter bridge type... ( in: bridge in, out: bridge out, vault: bridge vault )",
     },
     {
       value: "status",
@@ -187,16 +201,16 @@ function BridgeTransactions() {
           break;
 
         case "type":
-          if (query !== "in" && query !== "out" && query !== "cross") {
-            setSearchError("Invalid bridge type. Use 'in', 'out', or 'cross'.");
+          if (query !== "in" && query !== "out" && query !== "vault") {
+            setSearchError("Invalid bridge type. Use 'in', 'out', or 'vault'.");
             return false;
           }
           fetchTransactions({
             type:
               query === "in"
                 ? TransactionType.BRIDGE_IN
-                : query === "cross"
-                ? TransactionType.BRIDGE_CROSS
+                : query === "vault"
+                ? TransactionType.BRIDGE_VAULT
                 : TransactionType.BRIDGE_OUT,
             page,
           });
@@ -1018,9 +1032,9 @@ function BridgeTransactions() {
                                 flexShrink: 0,
                               }}
                             ></div>
-                            <span style={{ color: getChainColor(tx.chainId) }}>{getChainName(tx.chainId)}</span>
+                            <span style={{ color: getChainColor(getSourceChainId(tx)) }}>{getBridgeChainName(getSourceChainId(tx))}</span>
                             <span style={{ color: colors.text.muted }}>→</span>
-                            <span style={{ color: getChainColor(tx.bridgeChainId) }}>{getBridgeChainName(tx.bridgeChainId)}</span>
+                            <span style={{ color: getChainColor(getDestChainId(tx)) }}>{getBridgeChainName(getDestChainId(tx))}</span>
                           </span>
                         </td>
                         <td style={{ padding: "0.875rem 1rem", borderBottom: `1px solid ${colors.border.subtle}` }}>
@@ -1033,13 +1047,13 @@ function BridgeTransactions() {
                               background:
                                 tx.type === TransactionType.BRIDGE_IN
                                   ? colors.status.successBg
-                                  : tx.type === TransactionType.BRIDGE_CROSS
+                                  : tx.type === TransactionType.BRIDGE_VAULT
                                   ? colors.primary.bg
                                   : colors.status.infoBg,
                               border:
                                 tx.type === TransactionType.BRIDGE_IN
                                   ? `1px solid ${colors.status.successBorder}`
-                                  : tx.type === TransactionType.BRIDGE_CROSS
+                                  : tx.type === TransactionType.BRIDGE_VAULT
                                   ? `1px solid ${colors.primary.border}`
                                   : `1px solid ${colors.status.infoBorder}`,
                               borderRadius: "9999px",
@@ -1048,7 +1062,7 @@ function BridgeTransactions() {
                               color:
                                 tx.type === TransactionType.BRIDGE_IN
                                   ? colors.status.success
-                                  : tx.type === TransactionType.BRIDGE_CROSS
+                                  : tx.type === TransactionType.BRIDGE_VAULT
                                   ? colors.primary.light
                                   : colors.status.infoText,
                             }}
@@ -1056,15 +1070,15 @@ function BridgeTransactions() {
                             <span>
                               {tx.type === TransactionType.BRIDGE_IN
                                 ? "←"
-                                : tx.type === TransactionType.BRIDGE_CROSS
-                                ? "⇄"
+                                : tx.type === TransactionType.BRIDGE_VAULT
+                                ? "→"
                                 : "→"}
                             </span>
                             <span>
                               {tx.type === TransactionType.BRIDGE_IN
                                 ? "Bridge In"
-                                : tx.type === TransactionType.BRIDGE_CROSS
-                                ? "Cross Chain"
+                                : tx.type === TransactionType.BRIDGE_VAULT
+                                ? "Bridge Vault"
                                 : "Bridge Out"}
                             </span>
                           </span>
@@ -1204,7 +1218,7 @@ function BridgeTransactions() {
                             "-"
                           ) : (
                             <a
-                              href={getExplorerUrl(tx.bridgeChainId, tx.receiptId)}
+                              href={getExplorerUrl(getDestChainId(tx), tx.receiptId)}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
