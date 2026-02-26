@@ -780,6 +780,13 @@ function CrossChain() {
         });
 
         toast.success(`Bridge transaction completed! Hash: ${tx.hash}`);
+
+        // Notify coordinator to poll for BridgeOut event immediately
+        fetch(`${networkConfig.coordinatorUrl}/notify-bridgeout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chainId }),
+        }).catch((err) => console.warn("[notify-bridgeout] Failed to notify coordinator:", err));
       } else {
         // Regular (non-vault) bridge
         const contractWithSigner = contract.connect(signer) as ethers.Contract;
@@ -816,6 +823,13 @@ function CrossChain() {
         });
 
         toast.success(`Bridge transaction completed! Hash: ${tx.hash}`);
+
+        // Notify coordinator to poll for BridgeOut event immediately
+        fetch(`${networkConfig.coordinatorUrl}/notify-bridgeout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chainId }),
+        }).catch((err) => console.warn("[notify-bridgeout] Failed to notify coordinator:", err));
       }
 
       await fetchBalance();
