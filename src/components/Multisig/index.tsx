@@ -22,6 +22,16 @@ function resolveChainByType(type: ContractType): number {
   if (type === "Secondary") return networkConfig.secondaryChainConfig.chainId;
   return networkConfig.defaultChain; // Primary and Vault both live on the default chain
 }
+
+// Resolve the deployment block for a given contract type to avoid fetching before deployment
+function resolveDeploymentBlockByType(type: ContractType): number {
+  const chains = networkConfig.supportedChains;
+  const defaultCfg = chains[networkConfig.defaultChain.toString()];
+  const secondaryCfg = chains[networkConfig.secondaryChainConfig.chainId.toString()];
+  if (type === "Secondary") return secondaryCfg?.deploymentBlock ?? 0;
+  if (type === "Vault") return networkConfig.vaultChain?.deploymentBlock ?? defaultCfg?.deploymentBlock ?? 0;
+  return defaultCfg?.deploymentBlock ?? 0;
+}
 import { toast } from "react-toastify";
 import { colors } from "@/theme/colors";
 import { abi as liberdusAbi } from "../../utils/abis/Liberdus.json";
@@ -274,37 +284,30 @@ function Multisig() {
     setLoading(true);
     try {
       const currentBlock = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, currentBlock - 100000);
+      const deploymentBlock = resolveDeploymentBlockByType(contractType);
+      const fromBlock = Math.max(deploymentBlock, 0);
+      const batchSize = 500;
+      const batchDelayMs = 300;
 
-      const [requestedLogs, executedLogs, signedLogs] = await Promise.all([
-        contract.queryFilter(
-          contract.filters.OperationRequested(),
-          fromBlock,
-          "latest",
-        ),
-        contract.queryFilter(
-          contract.filters.OperationExecuted(),
-          fromBlock,
-          "latest",
-        ),
-        signer?.address
-          ? contract.queryFilter(
-              contract.filters.SignatureSubmitted(null, signer.address),
-              fromBlock,
-              "latest",
-            )
-          : Promise.resolve([]),
-      ]);
+      const fetchBatched = async (filter: Parameters<typeof contract.queryFilter>[0]) => {
+        const logs: (ethers.EventLog | ethers.Log)[] = [];
+        for (let start = fromBlock; start <= currentBlock; start += batchSize) {
+          if (start > fromBlock) {
+            await new Promise((r) => setTimeout(r, batchDelayMs));
+          }
+          const end = Math.min(start + batchSize - 1, currentBlock);
+          const batch = await contract.queryFilter(filter, start, end);
+          logs.push(...batch);
+        }
+        return logs;
+      };
+      const betweenEventDelay = () => new Promise((r) => setTimeout(r, batchDelayMs));
 
-      const executedIds = new Set(
-        executedLogs.map((l) => {
-          const parsed = contract.interface.parseLog({
-            topics: l.topics as string[],
-            data: l.data,
-          });
-          return parsed?.args[0] as string;
-        }),
-      );
+      const requestedLogs = await fetchBatched(contract.filters.OperationRequested());
+      await betweenEventDelay();
+      const signedLogs = signer?.address
+        ? await fetchBatched(contract.filters.SignatureSubmitted(null, signer.address))
+        : [];
 
       const signedIds = new Set(
         signedLogs.map((l) => {
@@ -335,12 +338,13 @@ function Multisig() {
         const deadline = Number(parsed.args[6]);
         const timestamp = Number(parsed.args[7]);
 
-        const executed = executedIds.has(operationId);
-        // Get current sig count from contract
+        // Get current sig count and executed status from contract
         let numSignatures = 0;
+        let executed = false;
         try {
           const opData = await contract.operations(operationId);
           numSignatures = Number(opData.numSignatures ?? opData[4]);
+          executed = Boolean(opData.executed ?? opData[5]);
         } catch {}
 
         const opTypeName =
@@ -377,7 +381,7 @@ function Multisig() {
     } finally {
       setLoading(false);
     }
-  }, [contract, provider, signer?.address, currentOpTypes]);
+  }, [contract, provider, signer?.address, currentOpTypes, contractType]);
 
   useEffect(() => {
     if (contract && provider) {
@@ -1430,7 +1434,11 @@ function Multisig() {
                 <tbody>
                   {displayedOps.map((op) => {
                     const isPending = !op.executed && !op.isExpired;
-                    const canSign = isSigner && isPending && !op.hasSigned;
+                    const ownerCanSignThis =
+                      isOwner &&
+                      op.opTypeName === "UpdateSigner" &&
+                      (contractType === "Secondary" || contractType === "Vault");
+                    const canSign = (isSigner || ownerCanSignThis) && isPending && !op.hasSigned;
                     const isSigning = signingId === op.operationId;
 
                     const statusColor = op.executed
