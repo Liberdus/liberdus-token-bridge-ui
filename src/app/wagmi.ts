@@ -96,13 +96,15 @@ export const getExplorerUrl = (chainId: number, txHash: string): string => {
     31337: "http://127.0.0.1:8545/tx/", // Local development
   };
 
-  // Default to Liberdus explorer if chain ID not found or if it's a Liberdus transaction
+  // Default to Liberdus explorer if chain ID not found in the EVM explorer map
   const explorerUrl = explorers[chainId];
-  if (!explorerUrl || !txHash.startsWith("0x")) {
+  if (!explorerUrl) {
     return `${liberdusExplorer}${txHash}`;
   }
 
-  return `${explorerUrl}${txHash}`;
+  // Ensure the hash has the 0x prefix required by EVM explorers
+  const prefixedHash = txHash.startsWith("0x") ? txHash : `0x${txHash}`;
+  return `${explorerUrl}${prefixedHash}`;
 };
 
 // Helper function to get contract address for current chain
