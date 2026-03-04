@@ -17,7 +17,6 @@ export const networkConfig = {
     name: "Polygon Amoy Testnet",
     chainId: 80002,
     rpcUrl: "https://polygon-amoy-bor-rpc.publicnode.com",
-    wsUrl: "wss://polygon-amoy-bor-rpc.publicnode.com",
     contractAddress: "0xaA2616CD3A3d3d63F8e1ac9c7d7BDc37f16709dA",
     tssSenderAddress: "0x35576352AABCBCe19AeCE1fFD376f7C49F022706",
     bridgeAddress:
@@ -32,8 +31,7 @@ export const networkConfig = {
     name: "BSC Testnet",
     chainId: 97,
     rpcUrl: "https://bsc-testnet-rpc.publicnode.com",
-    wsUrl: "wss://bsc-testnet.publicnode.com",
-    contractAddress: "0xabD7eBbDc5980e5E0c10a0B862CDfD8bcC397Ef2",
+    contractAddress: "0xf5A75e4bC827c9cC31BacD4c4d365107C698b465",
     tssSenderAddress: "0x43178f0E762433E8Aa0E50EB6d691a3254f957EE",
     bridgeAddress:
       "43178f0e762433e8aa0e50eb6d691a3254f957ee000000000000000000000000",
@@ -41,14 +39,13 @@ export const networkConfig = {
       gasLimit: 200000,
       gasPriceTiers: [5, 10, 15, 20, 25, 30],
     },
-    deploymentBlock: 93576346,
+    deploymentBlock: 93766691,
   },
   supportedChains: {
     "80002": {
       name: "Polygon Amoy Testnet",
       chainId: 80002,
       rpcUrl: "https://polygon-amoy-bor-rpc.publicnode.com",
-      wsUrl: "wss://polygon-amoy-bor-rpc.publicnode.com",
       contractAddress: "0xD5409531c857AfD1b2fF6Cd527038e9981ef4863",
       tssSenderAddress: "0x35576352AABCBCe19AeCE1fFD376f7C49F022706",
       bridgeAddress:
@@ -63,8 +60,7 @@ export const networkConfig = {
       name: "BSC Testnet",
       chainId: 97,
       rpcUrl: "https://bsc-testnet-rpc.publicnode.com",
-      wsUrl: "wss://bsc-testnet.publicnode.com",
-      contractAddress: "0xabD7eBbDc5980e5E0c10a0B862CDfD8bcC397Ef2",
+      contractAddress: "0xf5A75e4bC827c9cC31BacD4c4d365107C698b465",
       tssSenderAddress: "0x43178f0E762433E8Aa0E50EB6d691a3254f957EE",
       bridgeAddress:
         "43178f0e762433e8aa0e50eb6d691a3254f957ee000000000000000000000000",
@@ -72,7 +68,7 @@ export const networkConfig = {
         gasLimit: 200000,
         gasPriceTiers: [5, 10, 15, 20, 25, 30],
       },
-      deploymentBlock: 93576346,
+      deploymentBlock: 93766691,
     },
   },
   defaultChain: 80002,
