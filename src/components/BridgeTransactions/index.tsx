@@ -41,6 +41,7 @@ export enum TransactionStatus {
   PROCESSING = 1,
   COMPLETED = 2,
   FAILED = 3,
+  REVERTED = 4, // tx executed but reverted on-chain
 }
 
 export enum TransactionType {
@@ -64,7 +65,8 @@ export function isTransactionStatus(
     value === TransactionStatus.PENDING ||
     value === TransactionStatus.PROCESSING ||
     value === TransactionStatus.COMPLETED ||
-    value === TransactionStatus.FAILED
+    value === TransactionStatus.FAILED ||
+    value === TransactionStatus.REVERTED
   );
 }
 
@@ -339,6 +341,7 @@ function BridgeTransactions() {
       case TransactionStatus.PENDING:
         return colors.status.warning;
       case TransactionStatus.FAILED:
+      case TransactionStatus.REVERTED:
         return colors.status.error;
       default:
         return colors.text.muted;
@@ -352,6 +355,7 @@ function BridgeTransactions() {
       case TransactionStatus.PENDING:
         return colors.status.warningBg;
       case TransactionStatus.FAILED:
+      case TransactionStatus.REVERTED:
         return colors.status.errorBg;
       default:
         return colors.action.hover;
@@ -365,6 +369,7 @@ function BridgeTransactions() {
       case TransactionStatus.PENDING:
         return `1px solid ${colors.status.warningBorder}`;
       case TransactionStatus.FAILED:
+      case TransactionStatus.REVERTED:
         return `1px solid ${colors.status.errorBorder}`;
       default:
         return `1px solid ${colors.border.subtle}`;
@@ -1118,6 +1123,8 @@ function BridgeTransactions() {
                                   ? "Completed"
                                   : tx.status === TransactionStatus.FAILED
                                   ? "Failed"
+                                  : tx.status === TransactionStatus.REVERTED
+                                  ? "Reverted"
                                   : tx.status === TransactionStatus.PENDING
                                   ? "Pending"
                                   : tx.status === TransactionStatus.PROCESSING
@@ -1126,8 +1133,8 @@ function BridgeTransactions() {
                               </span>
                             </span>
 
-                            {/* Add tooltip icon for failed transactions */}
-                            {tx.status === TransactionStatus.FAILED && (
+                            {/* Add tooltip icon for failed/reverted transactions */}
+                            {(tx.status === TransactionStatus.FAILED || tx.status === TransactionStatus.REVERTED) && (
                               <div
                                 style={{
                                   position: "relative",
@@ -1451,7 +1458,7 @@ function BridgeTransactions() {
               {(() => {
                 const tx = transactions.find((t) => t.txId === tooltipVisible);
                 if (!tx) return "Transaction not found.";
-                if (!tx.reason && tx.receiptId) return "Check the receipt for failed reason.";
+                if (tx.status === TransactionStatus.REVERTED) return "Check the receipt for failed reason.";
                 if (!tx.reason) return "No failure reason available.";
                 return tx.reason
                   .replace(/\\\"/g, '"') // Unescape quotes
