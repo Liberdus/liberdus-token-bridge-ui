@@ -968,7 +968,7 @@ function BridgeTransactions() {
                           }}
                         >
                           <a
-                            href={getExplorerUrl(tx.chainId, tx.txId)}
+                            href={getExplorerUrl(getSourceChainId(tx), tx.txId)}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
