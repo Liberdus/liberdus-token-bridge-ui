@@ -13,6 +13,8 @@ import {
 // Network configuration with all chain details
 export const networkConfig = {
   coordinatorUrl: "http://127.0.0.1:8000",
+  /** Liberdus proxy URL (e.g. port 3030) – used for notify-bridgeout */
+  liberdusProxyUrl: "http://127.0.0.1:3030",
   vaultChain: {
     name: "Polygon Amoy Testnet",
     chainId: 80002,
