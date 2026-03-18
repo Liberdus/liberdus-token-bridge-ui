@@ -19,29 +19,22 @@ export const networkConfig = {
     name: "Polygon Amoy Testnet",
     chainId: 80002,
     rpcUrl: "https://polygon-amoy-bor-rpc.publicnode.com",
-    contractAddress: "0xaA2616CD3A3d3d63F8e1ac9c7d7BDc37f16709dA",
-    tssSenderAddress: "0x35576352AABCBCe19AeCE1fFD376f7C49F022706",
-    bridgeAddress:
-      "35576352aabcbce19aece1ffd376f7c49f022706000000000000000000000000",
-    gasConfig: {
-      gasLimit: 200000,
-      gasPriceTiers: [50, 100, 150, 200, 250, 300],
-    },
-    deploymentBlock: 34708788,
+    contractAddress: "0xf563937Bc07cEFE9Cf028956EDF575234d8303ED",
+    deploymentBlock: 35355000,
   },
   secondaryChainConfig: {
     name: "BSC Testnet",
     chainId: 97,
     rpcUrl: "https://bsc-testnet-rpc.publicnode.com",
-    contractAddress: "0xf5A75e4bC827c9cC31BacD4c4d365107C698b465",
-    tssSenderAddress: "0x43178f0E762433E8Aa0E50EB6d691a3254f957EE",
+    contractAddress: "0x4113aED4Cb0930A7DFD76c8fF694Be7c669b50f1",
+    tssSenderAddress: "0xb1325c98Bc338986B64355cD72deC0E5eEa22416",
     bridgeAddress:
-      "43178f0e762433e8aa0e50eb6d691a3254f957ee000000000000000000000000",
+      "b1325c98bc338986b64355cd72dec0e5eea22416000000000000000000000000",
     gasConfig: {
       gasLimit: 200000,
       gasPriceTiers: [5, 10, 15, 20, 25, 30],
     },
-    deploymentBlock: 93766691,
+    deploymentBlock: 96441497,
   },
   supportedChains: {
     "80002": {
@@ -62,15 +55,15 @@ export const networkConfig = {
       name: "BSC Testnet",
       chainId: 97,
       rpcUrl: "https://bsc-testnet-rpc.publicnode.com",
-      contractAddress: "0xf5A75e4bC827c9cC31BacD4c4d365107C698b465",
-      tssSenderAddress: "0x43178f0E762433E8Aa0E50EB6d691a3254f957EE",
+      contractAddress: "0x4113aED4Cb0930A7DFD76c8fF694Be7c669b50f1",
+      tssSenderAddress: "0xb1325c98Bc338986B64355cD72deC0E5eEa22416",
       bridgeAddress:
-        "43178f0e762433e8aa0e50eb6d691a3254f957ee000000000000000000000000",
+        "b1325c98bc338986b64355cd72dec0e5eea22416000000000000000000000000",
       gasConfig: {
         gasLimit: 200000,
         gasPriceTiers: [5, 10, 15, 20, 25, 30],
       },
-      deploymentBlock: 93766691,
+      deploymentBlock: 96441497,
     },
   },
   defaultChain: 80002,
